@@ -108,6 +108,7 @@ export default async function handler(req, res) {
     `Pinyin: ${str(word.pinyin, 100) || '(not given)'}`,
     `Meaning: ${str(word.meaning, 300) || '(not given)'}`,
     `Flashcard example sentence: ${str(word.example, 500) || '(not given)'}`,
+    ...(word.exampleTranslation ? [`Example sentence translation: ${str(word.exampleTranslation, 500)}`] : []),
     '',
     "Learner's text:",
     text.trim(),

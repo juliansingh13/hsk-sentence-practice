@@ -108,6 +108,10 @@ function renderStudy() {
   $('w-meaning-toggle').textContent = 'Show meaning';
   $('w-example-wrap').hidden = !w.example;
   $('w-example').textContent = w.example;
+  $('w-example-py').textContent = w.examplePinyin || '';
+  $('w-example-py').hidden = !w.examplePinyin;
+  $('w-example-tr').textContent = w.exampleTranslation || '';
+  $('w-example-tr').hidden = !w.exampleTranslation;
   $('input-text').placeholder = `用「${w.hanzi}」造几个句子……`;
 
   $('prev-word').disabled = p.wordPos === 0;
@@ -339,12 +343,13 @@ function setupMapping() {
   const { parsed, map } = pending;
   $('mapping').hidden = false;
   $('mapping-info').textContent = `${parsed.rows.length} rows, ${parsed.columns.length} columns. Check that each field points to the right column.`;
-  const fields = ['hanzi', 'pinyin', 'meaning', 'example'];
+  const fields = ['hanzi', 'pinyin', 'meaning', 'example', 'examplePinyin', 'exampleTranslation', 'order'];
   for (const f of fields) {
     const sel = $('map-' + f);
-    sel.innerHTML = `<option value="-1">${f === 'hanzi' ? '— choose —' : '— none —'}</option>` +
+    const none = f === 'hanzi' ? '— choose —' : f === 'order' ? 'File order' : '— none —';
+    sel.innerHTML = `<option value="-1">${none}</option>` +
       parsed.columns.map((c, k) => `<option value="${k}">${escapeHtml(c)}: ${escapeHtml((parsed.rows[0][k] || '').slice(0, 24))}</option>`).join('');
-    sel.value = String(map[f]);
+    sel.value = String(map[f] ?? -1);
     sel.onchange = () => { map[f] = parseInt(sel.value, 10); updatePreview(); };
   }
   // Guess whether the first row is a header (no CJK in the word column).
@@ -359,8 +364,8 @@ function updatePreview() {
   const skip = $('skip-first').checked;
   pending.words = map.hanzi >= 0 ? buildWords(parsed.rows, map, skip) : [];
   const fieldOf = {};
-  for (const [f, k] of Object.entries(map)) if (k >= 0) fieldOf[k] = f;
-  const names = { hanzi: 'Word', pinyin: 'Pinyin', meaning: 'Meaning', example: 'Example' };
+  for (const [f, k] of Object.entries(map)) if (k >= 0 && f !== 'order') fieldOf[k] = f;
+  const names = { hanzi: 'Word', pinyin: 'Pinyin', meaning: 'Meaning', example: 'Example', examplePinyin: 'Ex. pinyin', exampleTranslation: 'Ex. translation' };
   const rows = parsed.rows.slice(skip ? 1 : 0, (skip ? 1 : 0) + 4);
   let html = '<tr>' + parsed.columns.map((c, k) =>
     `<th class="${fieldOf[k] ? 'mapped' : ''}">${fieldOf[k] ? names[fieldOf[k]] : escapeHtml(c)}</th>`).join('') + '</tr>';

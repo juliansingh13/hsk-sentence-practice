@@ -130,7 +130,11 @@ function columnStats(rows, k) {
   const cjkRatio = nonEmpty.reduce((a, s) => a + ((s.match(CJK) || []).length / s.length), 0) / nonEmpty.length;
   const pinyinFrac = nonEmpty.filter(s => PINYIN_LINE.test(s) && (TONE.test(s) || /[a-z][1-5]\b/i.test(s))).length / nonEmpty.length;
   const latinFrac = nonEmpty.filter(s => /[a-z]/i.test(s) && (s.match(CJK) || []).length === 0).length / nonEmpty.length;
-  return { empty: false, avgLen, cjkRatio, pinyinFrac, latinFrac, fill: nonEmpty.length / sample.length };
+  const fill = nonEmpty.length / sample.length;
+  // Sparse columns (notes, alternates) must not win over the real field.
+  if (fill < 0.5) return { empty: true };
+  const distinct = new Set(nonEmpty).size / nonEmpty.length; // low for e.g. part-of-speech columns
+  return { empty: false, avgLen, cjkRatio, pinyinFrac, latinFrac, fill, distinct };
 }
 
 // Guess which column holds which field. Returns indices (or -1).
@@ -169,23 +173,63 @@ export function guessMapping(parsed) {
     });
     map.example = best;
   }
-  if (map.meaning < 0) {
-    let best = -1, bestV = 0.4;
-    stats.forEach((s, k) => { if (!s.empty && !used().has(k) && s.latinFrac > bestV) { best = k; bestV = s.latinFrac; } });
-    map.meaning = best;
+  // Sentence-level pinyin: a pinyin-like column, longer than the word pinyin.
+  map.examplePinyin = byName(/sentence.*pinyin|example.*pinyin|例句拼音/i);
+  if (map.examplePinyin < 0) {
+    let best = -1, bestLen = 0;
+    const py = map.pinyin >= 0 ? stats[map.pinyin].avgLen : 0;
+    stats.forEach((s, k) => {
+      if (!s.empty && !used().has(k) && s.latinFrac > 0.6 && s.cjkRatio < 0.05 && s.avgLen > py + 6
+        && s.pinyinFrac > 0.3 && s.avgLen > bestLen) { best = k; bestLen = s.avgLen; }
+    });
+    map.examplePinyin = best;
   }
+  // Word meaning: latin column, shorter than the sentence translation.
+  const latinCols = stats
+    .map((s, k) => ({ s, k }))
+    .filter(({ s, k }) => !s.empty && !used().has(k) && s.latinFrac > 0.6 && s.pinyinFrac < 0.3 && s.cjkRatio < 0.05 && s.distinct > 0.5)
+    .sort((a, b) => a.s.avgLen - b.s.avgLen);
+  if (map.meaning < 0 && latinCols.length) map.meaning = latinCols[0].k;
+  map.exampleTranslation = byName(/sentence.*(english|translation|meaning)|example.*(english|translation)/i);
+  if (map.exampleTranslation < 0 && map.example >= 0) {
+    const longer = latinCols.filter(c => c.k !== map.meaning && c.s.avgLen > (map.meaning >= 0 ? stats[map.meaning].avgLen : 0));
+    map.exampleTranslation = longer.length ? longer[longer.length - 1].k : -1;
+  }
+  map.order = guessOrderColumn(parsed);
   return map;
 }
 
+// A column of distinct integers (e.g. a frequency rank) to sort by, or -1 for file order.
+export function guessOrderColumn(parsed) {
+  const { rows, columns } = parsed;
+  for (let k = 0; k < columns.length; k++) {
+    const vals = rows.map(r => r[k]);
+    const ints = vals.filter(v => /^\d+$/.test(v));
+    if (ints.length < rows.length * 0.95) continue;
+    if (new Set(ints).size < ints.length * 0.95) continue;
+    // Only worth sorting if the file isn't already in that order.
+    let unordered = 0;
+    for (let i = 1; i < ints.length; i++) if (+ints[i] < +ints[i - 1]) unordered++;
+    return unordered ? k : -1;
+  }
+  return -1;
+}
+
 export function buildWords(rows, map, skipFirstRow = false) {
-  const src = skipFirstRow ? rows.slice(1) : rows;
-  const get = (r, k) => (k >= 0 ? (r[k] || '') : '');
+  let src = skipFirstRow ? rows.slice(1) : rows.slice();
+  const get = (r, k) => (k >= 0 && k !== undefined ? (r[k] || '') : '');
+  if (map.order >= 0) {
+    const key = (r) => { const v = r[map.order]; return /^\s*-?\d+(\.\d+)?\s*$/.test(v) ? parseFloat(v) : Infinity; };
+    src = src.map((r, i) => ({ r, i })).sort((a, b) => { const ka = key(a.r), kb = key(b.r); return ka === kb ? a.i - b.i : (ka < kb ? -1 : 1); }).map(x => x.r);
+  }
   return src
     .map(r => ({
       hanzi: get(r, map.hanzi),
       pinyin: get(r, map.pinyin),
       meaning: get(r, map.meaning),
       example: get(r, map.example),
+      examplePinyin: get(r, map.examplePinyin),
+      exampleTranslation: get(r, map.exampleTranslation),
     }))
     .filter(w => w.hanzi);
 }
