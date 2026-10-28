@@ -28,12 +28,13 @@
         <button class="iconbtn" id="next-day" type="button" title="Next block">›</button>
       </div>
 
-      <div class="wordsearch">
-        <input type="search" id="word-search" autocomplete="off" spellcheck="false" placeholder="Search words: 汉字, pinyin or English">
-        <div class="search-results" id="search-results" hidden></div>
+      <div class="wordbar">
+        <div class="chips" id="word-chips"></div>
+        <div class="wordsearch" role="search">
+          <input type="text" id="word-search" autocomplete="off" spellcheck="false" placeholder="Search words" title="Search by 汉字, pinyin or English" aria-label="Search words by 汉字, pinyin or English">
+          <div class="search-results" id="search-results" hidden></div>
+        </div>
       </div>
-
-      <div class="chips" id="word-chips"></div>
 
       <div class="study-layout">
         <div class="study-side">
