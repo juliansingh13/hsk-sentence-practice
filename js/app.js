@@ -1,5 +1,6 @@
 import { parseAnkiExport, guessMapping, buildWords } from './anki.js';
 import { escapeHtml, highlightHtml } from './highlight.js';
+import { checkMessages, chatMessages, normalizeCheck, callDeepSeek, safeJson } from './prompts.js';
 
 const STORE_KEY = 'hskw.v1';
 const $ = (id) => document.getElementById(id);
@@ -8,7 +9,7 @@ const $ = (id) => document.getElementById(id);
 function defaultState() {
   return {
     deck: null, // { name, words: [{hanzi,pinyin,meaning,example}], importedAt }
-    settings: { perDay: 7, passphrase: '' },
+    settings: { perDay: 7, apiKey: '', passphrase: '' },
     progress: { blockStart: 0, blockDate: today(), completed: false, wordPos: 0 },
     history: {}, // key -> [{ text, result, ts }]
   };
@@ -194,7 +195,7 @@ function renderResult(r) {
       html += '<ol class="errors">';
       errs.forEach((e, i) => {
         const fix = e.span || e.suggestion
-          ? `<div class="fix">${e.span ? `<span class="from">${escapeHtml(e.span)}</span>` : ''}${e.span && e.suggestion ? ' → ' : ''}${e.suggestion ? `<span class="to">${escapeHtml(e.suggestion)}</span>` : ''}</div>`
+          ? `<div class="fix">${e.span ? `<span class="from">${escapeHtml(e.span)}</span>` : ''}${e.span ? ' → ' : ''}${e.suggestion ? `<span class="to">${escapeHtml(e.suggestion)}</span>` : '<span class="remove">remove</span>'}</div>`
           : '';
         const unloc = e.span && !positions[i] ? '<div class="unlocated">(could not mark this in the sentence)</div>' : '';
         html += `<li data-err="${i}"><span class="num t-${escapeHtml(e.type)}">${labels[i]}</span><div>`
@@ -242,27 +243,62 @@ function renderHistory(wi) {
   ).join('');
 }
 
+// ---------- talking to DeepSeek ----------
+// Own key: the browser calls DeepSeek directly. Otherwise the owner's passphrase unlocks the server's key.
+function hasCredentials() {
+  return !!(state.settings.apiKey || state.settings.passphrase);
+}
+async function postServer(path, payload) {
+  let r;
+  try {
+    r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  } catch {
+    throw new Error('Could not reach the server. Check your internet connection.');
+  }
+  const data = await r.json().catch(() => ({ error: `Server error ${r.status}` }));
+  if (!r.ok || data.error) throw new Error(data.error || `Server error ${r.status}`);
+  return data;
+}
+async function runCheck(word, text) {
+  if (state.settings.apiKey) {
+    const content = await callDeepSeek({ key: state.settings.apiKey, messages: checkMessages(word, text), json: true });
+    const parsed = safeJson(content);
+    if (!parsed) throw new Error('The model returned an unreadable answer. Try again.');
+    return normalizeCheck(parsed);
+  }
+  return postServer('/api/check', { passphrase: state.settings.passphrase, word, text });
+}
+async function runChat(word, entry) {
+  if (state.settings.apiKey) {
+    const reply = await callDeepSeek({
+      key: state.settings.apiKey,
+      messages: chatMessages(word, entry.text, entry.result, entry.chat),
+      temperature: 0.4,
+      maxTokens: 1500,
+    });
+    return reply.trim();
+  }
+  const data = await postServer('/api/chat', {
+    passphrase: state.settings.passphrase, word, text: entry.text, result: entry.result, messages: entry.chat,
+  });
+  return data.reply;
+}
+
 async function check() {
   const idx = blockIndices();
   const wi = idx[state.progress.wordPos];
   const w = words()[wi];
   const text = $('input-text').value.trim();
   if (!text) return;
-  if (!state.settings.passphrase) {
-    setStatus('Set your passphrase in Settings first.', true);
+  if (!hasCredentials()) {
+    setStatus('Add your DeepSeek API key in Settings first.', true);
     return;
   }
   const btn = $('check-btn');
   btn.disabled = true;
   setStatus('<span class="spinner"></span>Checking…', false, true);
   try {
-    const r = await fetch('/api/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ passphrase: state.settings.passphrase, word: w, text }),
-    });
-    const data = await r.json().catch(() => ({ error: `Server error ${r.status}` }));
-    if (!r.ok || data.error) throw new Error(data.error || `Server error ${r.status}`);
+    const data = await runCheck(w, text);
     const key = historyKey(wi);
     const entry = { text, result: data, ts: Date.now(), chat: [] };
     (state.history[key] ||= []).push(entry);
@@ -291,6 +327,91 @@ $('check-btn').onclick = check;
 $('input-text').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); check(); }
 });
+
+// ---------- word search ----------
+const fold = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[\s'’·\-]/g, '').toLowerCase();
+
+function searchWords(query, limit = 12) {
+  const q = query.trim();
+  if (!q) return [];
+  const qf = fold(q).replace(/v/g, 'u');
+  const ql = q.toLowerCase();
+  const wordRe = new RegExp(`\\b${ql.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+  const hits = [];
+  words().forEach((w, i) => {
+    let score = -1;
+    if (w.hanzi === q) score = 0;
+    else if (w.hanzi.startsWith(q)) score = 1;
+    else if (w.hanzi.includes(q)) score = 2;
+    else if (qf) {
+      const pf = fold(w.pinyin);
+      if (pf === qf) score = 3;
+      else if (pf.startsWith(qf)) score = 4;
+      else if (/[a-z]/i.test(q) && wordRe.test(w.meaning)) score = 5;
+      else if (/[a-z]/i.test(q) && q.length > 2 && w.meaning.toLowerCase().includes(ql)) score = 6;
+    }
+    if (score >= 0) hits.push({ i, score });
+  });
+  hits.sort((a, b) => a.score - b.score || a.i - b.i);
+  return hits.slice(0, limit).map(h => h.i);
+}
+
+function jumpToWord(i) {
+  const p = state.progress;
+  const n = perDay();
+  let start = p.blockStart + Math.floor((i - p.blockStart) / n) * n;
+  if (start < 0) start = 0;
+  p.blockStart = start;
+  p.wordPos = i - start;
+  p.completed = false;
+  p.blockDate = today();
+  lastResult = null;
+  save();
+  closeSearch();
+  renderStudy();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeSearch() {
+  $('word-search').value = '';
+  $('search-results').hidden = true;
+  $('search-results').innerHTML = '';
+}
+
+function renderSearch() {
+  const box = $('search-results');
+  const q = $('word-search').value;
+  if (!q.trim()) { box.hidden = true; box.innerHTML = ''; return; }
+  const hits = searchWords(q);
+  box.hidden = false;
+  if (!hits.length) { box.innerHTML = '<div class="search-empty">No matching words</div>'; return; }
+  box.innerHTML = hits.map(i => {
+    const w = words()[i];
+    return `<button type="button" class="search-hit" data-i="${i}">`
+      + `<span class="sh-hanzi">${escapeHtml(w.hanzi)}</span>`
+      + `<span class="sh-pinyin">${escapeHtml(w.pinyin)}</span>`
+      + `<span class="sh-meaning">${escapeHtml(w.meaning)}</span>`
+      + `<span class="sh-pos">#${i + 1}</span></button>`;
+  }).join('');
+}
+
+$('word-search').addEventListener('input', renderSearch);
+$('word-search').addEventListener('keydown', (e) => {
+  if (e.isComposing) return;
+  if (e.key === 'Escape') { closeSearch(); e.target.blur(); }
+  if (e.key === 'Enter') {
+    const first = $('search-results').querySelector('.search-hit');
+    if (first) jumpToWord(parseInt(first.dataset.i, 10));
+  }
+});
+$('search-results').addEventListener('click', (e) => {
+  const hit = e.target.closest('.search-hit');
+  if (hit) jumpToWord(parseInt(hit.dataset.i, 10));
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.wordsearch')) $('search-results').hidden = true;
+});
+$('word-search').addEventListener('focus', () => { if ($('word-search').value.trim()) renderSearch(); });
 
 // ---------- follow-up chat ----------
 function mdLite(text) {
@@ -332,20 +453,8 @@ async function sendChat() {
   const st = $('chat-status');
   st.hidden = false; st.className = 'status'; st.innerHTML = '<span class="spinner"></span>Thinking…';
   try {
-    const r = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        passphrase: state.settings.passphrase,
-        word: lastResult.word || words()[blockIndices()[state.progress.wordPos]],
-        text: entry.text,
-        result: entry.result,
-        messages: entry.chat,
-      }),
-    });
-    const data = await r.json().catch(() => ({ error: `Server error ${r.status}` }));
-    if (!r.ok || data.error) throw new Error(data.error || `Server error ${r.status}`);
-    entry.chat.push({ role: 'assistant', content: data.reply });
+    const reply = await runChat(lastResult.word || words()[blockIndices()[state.progress.wordPos]], entry);
+    entry.chat.push({ role: 'assistant', content: reply });
     save();
     renderChat();
   } catch (e) {
@@ -373,7 +482,10 @@ function renderSettings() {
     : 'No list loaded yet.';
   $('per-day').value = state.settings.perDay;
   $('passphrase').value = state.settings.passphrase || '';
-  $('plan-panel').hidden = !d && !pending;
+  $('api-key').value = state.settings.apiKey || '';
+  document.querySelector('.passphrase-box').open = !!state.settings.passphrase;
+  $('intro').hidden = !!state.deck;
+  $('plan-panel').hidden = false;
   fillStartSelect(currentWordList(), state.progress.blockStart);
   $('settings-status').textContent = '';
 }
@@ -468,7 +580,8 @@ $('use-deck').onclick = () => {
 $('save-settings').onclick = () => {
   const per = Math.min(100, Math.max(1, parseInt($('per-day').value, 10) || 7));
   const start = parseInt($('start-select').value, 10) || 0;
-  const pass = $('passphrase').value;
+  const pass = $('passphrase').value.trim();
+  const apiKey = $('api-key').value.trim();
   const newDeck = !!pending?.words?.length;
   if (newDeck) {
     $('mapping').hidden = true;
@@ -484,13 +597,15 @@ $('save-settings').onclick = () => {
   }
   state.settings.perDay = per;
   state.settings.passphrase = pass;
+  state.settings.apiKey = apiKey;
   lastResult = null;
   save();
   show('study');
 };
 
 $('export-btn').onclick = () => {
-  const blob = new Blob([JSON.stringify(state, null, 1)], { type: 'application/json' });
+  const { apiKey, passphrase, ...shareable } = state.settings;
+  const blob = new Blob([JSON.stringify({ ...state, settings: shareable }, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `hsk-sentences-backup-${today()}.json`;
@@ -503,7 +618,9 @@ $('import-input').addEventListener('change', async (e) => {
   try {
     const data = JSON.parse(await f.text());
     if (!data || !data.deck || !Array.isArray(data.deck.words)) throw new Error('Not a backup file.');
+    const keep = { apiKey: state.settings.apiKey, passphrase: state.settings.passphrase };
     state = { ...defaultState(), ...data };
+    state.settings = { ...defaultState().settings, ...(data.settings || {}), ...keep };
     save();
     $('settings-status').textContent = 'Backup imported.';
     renderSettings();

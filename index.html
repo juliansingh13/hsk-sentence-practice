@@ -28,6 +28,11 @@
         <button class="iconbtn" id="next-day" type="button" title="Next block">›</button>
       </div>
 
+      <div class="wordsearch">
+        <input type="search" id="word-search" autocomplete="off" spellcheck="false" placeholder="Search words: 汉字, pinyin or English">
+        <div class="search-results" id="search-results" hidden></div>
+      </div>
+
       <div class="chips" id="word-chips"></div>
 
       <div class="study-layout">
@@ -89,9 +94,20 @@
 
     <!-- SETTINGS VIEW -->
     <section id="view-settings" hidden>
+      <div class="panel intro" id="intro">
+        <h2>Practise your new Anki words in sentences</h2>
+        <p>Each day this site shows the new words from your Anki deck. You write sentences with each word, and an AI tutor (DeepSeek) marks mistakes in three colours: how you used the <span class="tag tag-tw">new word</span>, <span class="tag tag-gr">grammar</span>, and <span class="tag tag-nat">naturalness</span>, then explains them in English. You can ask follow-up questions about every correction.</p>
+        <p class="muted">Setup takes about five minutes: upload your deck, choose where you are in it, and add a DeepSeek API key. Your deck, progress and key stay in this browser.</p>
+      </div>
+
       <div class="panel">
         <h2>1 · Vocabulary list</h2>
-        <p class="muted">In Anki: <em>File → Export…</em>, choose <em>Notes in Plain Text (.txt)</em>, and untick “Include HTML and media references”. Any tab- or comma-separated file also works.</p>
+        <ol class="steps">
+          <li>In Anki on your computer, open <em>File → Export…</em></li>
+          <li>Export format: <em>Notes in Plain Text (.txt)</em>. Include: your deck.</li>
+          <li>Untick <em>Include HTML and media references</em>, then export and upload the file here.</li>
+        </ol>
+        <p class="muted">After uploading, check that each field below points to the right column. The preview shows the first rows. Any tab- or comma-separated word list works too.</p>
         <div class="current-deck" id="current-deck"></div>
         <label class="filebtn">
           <input type="file" id="file-input" accept=".txt,.tsv,.csv,text/plain,text/csv">
@@ -131,14 +147,24 @@
       </div>
 
       <div class="panel">
-        <h2>3 · Passphrase</h2>
-        <p class="muted">The passphrase you set as <code>APP_PASSPHRASE</code> on the server. It is stored only in this browser.</p>
-        <input type="password" id="passphrase" autocomplete="current-password" placeholder="Passphrase">
+        <h2>3 · DeepSeek API key</h2>
+        <ol class="steps">
+          <li>Sign up at <a href="https://platform.deepseek.com" target="_blank" rel="noopener">platform.deepseek.com</a>.</li>
+          <li>Top up a small amount (the minimum lasts months: one check costs a fraction of a cent).</li>
+          <li>Open <em>API keys</em>, create a key, and paste it here.</li>
+        </ol>
+        <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="sk-…">
+        <p class="muted small">The key is saved only in this browser and sent only to DeepSeek (api.deepseek.com), never to this website’s server. Anyone who can use this browser could read it, so keep only a small balance on the account.</p>
+        <details class="passphrase-box">
+          <summary>Have a passphrase from the site owner instead?</summary>
+          <p class="muted small">With the owner’s passphrase you can use their key without a DeepSeek account. Leave the API key field empty to use it.</p>
+          <input type="password" id="passphrase" autocomplete="off" placeholder="Passphrase">
+        </details>
       </div>
 
       <div class="panel">
         <h2>Backup</h2>
-        <p class="muted">Progress and past attempts live in this browser. Export them to move to another device.</p>
+        <p class="muted">Your list, progress and past attempts live in this browser. Export them to move to another device (your API key and passphrase are not included).</p>
         <div class="row">
           <button class="ghost" id="export-btn" type="button">Export data</button>
           <label class="filebtn ghostfile"><input type="file" id="import-input" accept=".json,application/json"><span>Import data</span></label>

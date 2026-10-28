@@ -8,15 +8,17 @@ Daily sentence-writing practice for the new words in your Anki HSK deck. Upload 
 
 Each sentence also gets a minimally corrected version and a natural rewrite.
 
+## How the AI calls work
+
+Each visitor adds their own DeepSeek API key in Settings. It is stored only in their browser and the page calls `api.deepseek.com` directly, so the key never reaches this site's server.
+
+Optionally, the site owner can share their own key: set `DEEPSEEK_API_KEY` and `APP_PASSPHRASE` in Vercel, and anyone who enters the passphrase (with the key field left empty) uses the owner's key through the `/api` functions. Without those variables the functions refuse requests and only own-key mode works.
+
 ## Deploy on Vercel
 
-1. Import this repository at https://vercel.com/new (Framework preset: **Other**, no build command).
-2. Under **Settings → Environment Variables**, add:
-   - `DEEPSEEK_API_KEY`: your key from https://platform.deepseek.com
-   - `APP_PASSPHRASE`: any phrase; the site asks for it so strangers can't use your credit
-   - optional `DEEPSEEK_MODEL` (default `deepseek-chat`)
-3. Redeploy (Deployments → ⋯ → Redeploy) so the variables take effect.
-4. Open the site, go to **Settings**, upload your export, choose the first word and words per day, enter the passphrase, and press **Save and start**.
+1. Import this repository at https://vercel.com/new (preset **Other**, no build command).
+2. Optional, for the shared-key mode: under **Settings → Environment Variables** add `DEEPSEEK_API_KEY`, `APP_PASSPHRASE` and optionally `DEEPSEEK_MODEL` (default `deepseek-chat`), then redeploy.
+3. Share the link. Visitors follow the steps on the Settings page.
 
 ## Exporting from Anki
 
@@ -33,4 +35,4 @@ node dev-server.js      # http://localhost:3000
 
 ## Data
 
-The vocabulary list, progress and past attempts are stored in your browser's localStorage. Use Settings → Backup to move them to another device. Only the current word and your sentences are sent to the server and on to DeepSeek.
+The vocabulary list, progress and past attempts are stored in your browser's localStorage. Use Settings → Backup to move them to another device. Only the current word, your sentences and the corrections are sent to DeepSeek (via the server only in passphrase mode). Exported backups exclude the API key and passphrase.

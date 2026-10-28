@@ -193,7 +193,8 @@ mark.flash { outline: 2px solid currentColor; }
 @media (prefers-color-scheme: dark) { .num { color: #1a1612; } }
 .err-type { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
 .fix { font-family: var(--font-cjk); font-size: 17px; }
-.fix .from { text-decoration: line-through; text-decoration-color: var(--tw); color: var(--ink-2); }
+.fix .from { color: var(--tw); }
+.fix .remove { font-family: var(--font-ui); font-size: 13px; font-style: italic; color: var(--ink-3); }
 .fix .to { color: var(--ok); font-weight: 600; }
 .explain { color: var(--ink-2); font-size: 15px; }
 .unlocated { font-size: 12px; color: var(--ink-3); }
@@ -288,3 +289,36 @@ label.check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
   .study-main .composer { margin-top: 0; }
   .study-main textarea#input-text { min-height: 140px; }
 }
+
+/* Settings help text */
+.intro p { margin: 6px 0 10px; }
+.intro h2 { font-size: 19px; }
+.tag { padding: 0 6px; border-radius: 4px; white-space: nowrap; }
+.tag-tw { background: var(--tw-bg); box-shadow: inset 0 -2px 0 var(--tw); }
+.tag-gr { background: var(--gr-bg); box-shadow: inset 0 -2px 0 var(--gr); }
+.tag-nat { background: var(--nat-bg); box-shadow: inset 0 -2px 0 var(--nat); }
+.steps { margin: 6px 0 12px; padding-left: 22px; color: var(--ink-2); font-size: 14px; }
+.steps li { margin: 3px 0; }
+.panel a { color: var(--accent); }
+.muted.small { font-size: 13px; }
+.passphrase-box { margin-top: 10px; }
+.passphrase-box summary { cursor: pointer; font-size: 14px; color: var(--ink-2); }
+
+/* Word search */
+.wordsearch { position: relative; max-width: 520px; margin: 0 auto 12px; }
+.wordsearch input { margin-top: 0; border-radius: 999px; padding: 8px 16px; }
+.search-results {
+  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+  max-height: 60vh; overflow-y: auto; padding: 4px;
+}
+.search-hit {
+  display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; align-items: baseline; width: 100%;
+  text-align: left; background: none; border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer;
+}
+.search-hit:hover, .search-hit:focus { background: var(--surface-2); outline: none; }
+.sh-hanzi { font-family: var(--font-cjk); font-size: 18px; }
+.sh-pinyin { color: var(--accent); font-size: 14px; }
+.sh-meaning { color: var(--ink-2); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-pos { color: var(--ink-3); font-size: 12px; }
+.search-empty { padding: 10px; color: var(--ink-3); font-size: 14px; }
