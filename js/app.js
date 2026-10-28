@@ -123,7 +123,14 @@ function renderStudy() {
   ta.oninput = () => { try { sessionStorage.setItem(draftKey, ta.value); } catch {} };
 
   $('status').hidden = true;
+  // Reopening a word shows its latest attempt, so follow-up questions can continue.
+  const hist = state.history[historyKey(wi)] || [];
+  if ((!lastResult || lastResult.key !== historyKey(wi)) && hist.length) {
+    const entry = hist[hist.length - 1];
+    lastResult = { key: historyKey(wi), result: entry.result, entry, word: w };
+  }
   $('result').innerHTML = lastResult && lastResult.key === historyKey(wi) ? renderResult(lastResult.result) : '';
+  renderChat();
   renderHistory(wi);
 
   $('done-btn').hidden = p.completed;
@@ -229,7 +236,9 @@ function renderHistory(wi) {
   $('history').hidden = !past.length;
   $('history-summary').textContent = `Previous attempts (${past.length})`;
   $('history-list').innerHTML = past.slice().reverse().map(h =>
-    `<div class="history-item"><div class="history-date">${new Date(h.ts).toLocaleString()}</div>${renderResult(h.result)}</div>`
+    `<div class="history-item"><div class="history-date">${new Date(h.ts).toLocaleString()}</div>${renderResult(h.result)}`
+    + (h.chat?.length ? `<div class="chat-transcript"><div class="label">Questions</div><div class="chat-log">${h.chat.map(msgHtml).join('')}</div></div>` : '')
+    + '</div>'
   ).join('');
 }
 
@@ -255,12 +264,14 @@ async function check() {
     const data = await r.json().catch(() => ({ error: `Server error ${r.status}` }));
     if (!r.ok || data.error) throw new Error(data.error || `Server error ${r.status}`);
     const key = historyKey(wi);
-    (state.history[key] ||= []).push({ text, result: data, ts: Date.now() });
+    const entry = { text, result: data, ts: Date.now(), chat: [] };
+    (state.history[key] ||= []).push(entry);
     if (state.history[key].length > 30) state.history[key].shift();
     save();
-    lastResult = { key, result: data };
+    lastResult = { key, result: data, entry, word: w };
     $('status').hidden = true;
     $('result').innerHTML = renderResult(data);
+    renderChat();
     renderHistory(wi);
     document.querySelectorAll('.chip')[state.progress.wordPos]?.classList.add('done');
     $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -279,6 +290,77 @@ function setStatus(html, isError, raw) {
 $('check-btn').onclick = check;
 $('input-text').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); check(); }
+});
+
+// ---------- follow-up chat ----------
+function mdLite(text) {
+  // Escape, then allow **bold** and "- " bullet lists.
+  const lines = escapeHtml(text).split('\n');
+  let out = '', inList = false;
+  for (const line of lines) {
+    const m = line.match(/^\s*[-*•]\s+(.*)$/);
+    if (m) { if (!inList) { out += '<ul>'; inList = true; } out += `<li>${m[1]}</li>`; continue; }
+    if (inList) { out += '</ul>'; inList = false; }
+    out += line + '\n';
+  }
+  if (inList) out += '</ul>';
+  return out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n+$/, '');
+}
+function msgHtml(m) {
+  return `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${m.role === 'user' ? escapeHtml(m.content) : mdLite(m.content)}</div>`;
+}
+function renderChat() {
+  const active = !!(lastResult && lastResult.entry);
+  $('chat').hidden = !active;
+  $('chat-status').hidden = true;
+  if (!active) return;
+  $('chat-log').innerHTML = (lastResult.entry.chat || []).map(msgHtml).join('');
+}
+async function sendChat() {
+  if (!lastResult?.entry) return;
+  const input = $('chat-input');
+  const q = input.value.trim();
+  if (!q) return;
+  const entry = lastResult.entry;
+  entry.chat ||= [];
+  entry.chat.push({ role: 'user', content: q });
+  input.value = '';
+  save();
+  renderChat();
+  const btn = $('chat-send');
+  btn.disabled = true;
+  const st = $('chat-status');
+  st.hidden = false; st.className = 'status'; st.innerHTML = '<span class="spinner"></span>Thinking…';
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        passphrase: state.settings.passphrase,
+        word: lastResult.word || words()[blockIndices()[state.progress.wordPos]],
+        text: entry.text,
+        result: entry.result,
+        messages: entry.chat,
+      }),
+    });
+    const data = await r.json().catch(() => ({ error: `Server error ${r.status}` }));
+    if (!r.ok || data.error) throw new Error(data.error || `Server error ${r.status}`);
+    entry.chat.push({ role: 'assistant', content: data.reply });
+    save();
+    renderChat();
+  } catch (e) {
+    entry.chat.pop(); // let the user resend
+    input.value = q;
+    save();
+    renderChat();
+    st.hidden = false; st.className = 'status error'; st.textContent = e.message || String(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('chat-send').onclick = sendChat;
+$('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendChat(); }
 });
 
 // ---------- settings ----------

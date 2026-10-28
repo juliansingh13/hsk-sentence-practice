@@ -201,6 +201,21 @@ mark.flash { outline: 2px solid currentColor; }
 .versions div { font-family: var(--font-cjk); font-size: 17px; }
 .versions .vlabel { font-family: var(--font-ui); font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; margin-right: 8px; }
 
+/* Chat */
+.chat {
+  margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px;
+}
+.chat-log { display: grid; gap: 10px; margin: 6px 0 10px; }
+.chat-log:empty { display: none; }
+.msg { padding: 9px 12px; border-radius: 12px; max-width: 92%; white-space: pre-wrap; word-wrap: break-word; font-size: 15px; }
+.msg.user { justify-self: end; background: var(--accent-soft); }
+.msg.assistant { justify-self: start; background: var(--surface-2); }
+.msg ul { margin: 4px 0; padding-left: 20px; white-space: normal; }
+.chat-input-row { display: flex; gap: 8px; align-items: flex-end; }
+.chat-input-row textarea { min-height: 48px; font-family: var(--font-ui); font-size: 15px; line-height: 1.5; padding: 9px 12px; }
+.chat-transcript { margin-top: 10px; }
+.chat-transcript .label { margin-top: 4px; }
+
 /* History */
 .history { margin-top: 22px; }
 .history summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }

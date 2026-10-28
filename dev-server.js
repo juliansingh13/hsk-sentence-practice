@@ -13,18 +13,21 @@ if (fs.existsSync(envFile)) {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
   }
 }
-const { default: check } = await import('./api/check.js');
+const handlers = {
+  '/api/check': (await import('./api/check.js')).default,
+  '/api/chat': (await import('./api/chat.js')).default,
+};
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json' };
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/api/check') {
+  if (handlers[url.pathname]) {
     let body = '';
     for await (const chunk of req) body += chunk;
     req.body = body ? JSON.parse(body) : {};
     res.status = (c) => { res.statusCode = c; return res; };
     res.json = (o) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(o)); };
-    return check(req, res);
+    return handlers[url.pathname](req, res);
   }
   const rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
   const file = path.join(root, rel);

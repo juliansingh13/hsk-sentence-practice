@@ -55,6 +55,16 @@
 
       <div id="result"></div>
 
+      <div class="chat" id="chat" hidden>
+        <div class="label">Ask about these corrections</div>
+        <div class="chat-log" id="chat-log"></div>
+        <div class="chat-input-row">
+          <textarea id="chat-input" rows="2" placeholder="e.g. Why is 了 wrong here? Can I say … instead?"></textarea>
+          <button class="primary" id="chat-send" type="button">Ask</button>
+        </div>
+        <div class="status" id="chat-status" hidden></div>
+      </div>
+
       <details class="history" id="history" hidden>
         <summary id="history-summary">Previous attempts</summary>
         <div id="history-list"></div>
