@@ -265,3 +265,26 @@ label.check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
   .hint { display: none; }
   .composer-actions { justify-content: flex-end; }
 }
+
+/* Layout: single column on phones (original order), two columns on wide screens */
+.study-layout { display: flex; flex-direction: column; }
+.study-side { display: contents; }
+#word-card { order: 1; }
+.study-main { order: 2; }
+.wordnav { order: 3; }
+.done-row { order: 4; }
+
+@media (min-width: 1100px) {
+  .topbar, main { max-width: 1240px; padding-left: 32px; padding-right: 32px; }
+  #view-settings { max-width: 760px; margin: 0 auto; }
+  .study-layout {
+    display: grid; grid-template-columns: minmax(360px, 440px) minmax(0, 1fr); gap: 32px; align-items: start;
+  }
+  .study-side {
+    display: block; position: sticky; top: 16px;
+    max-height: calc(100vh - 32px); overflow-y: auto;
+  }
+  .study-side .wordnav { margin-top: 16px; }
+  .study-main .composer { margin-top: 0; }
+  .study-main textarea#input-text { min-height: 140px; }
+}

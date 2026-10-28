@@ -30,53 +30,60 @@
 
       <div class="chips" id="word-chips"></div>
 
-      <article class="card" id="word-card">
-        <div class="word-hanzi" id="w-hanzi"></div>
-        <div class="word-pinyin" id="w-pinyin"></div>
-        <button class="meaning-toggle" id="w-meaning-toggle" type="button">Show meaning</button>
-        <div class="word-meaning" id="w-meaning" hidden></div>
-        <div class="example" id="w-example-wrap">
-          <div class="label">Example</div>
-          <div class="example-text" id="w-example"></div>
-          <div class="example-py" id="w-example-py" hidden></div>
-          <div class="example-tr" id="w-example-tr" hidden></div>
+      <div class="study-layout">
+        <div class="study-side">
+          <article class="card" id="word-card">
+            <div class="word-hanzi" id="w-hanzi"></div>
+            <div class="word-pinyin" id="w-pinyin"></div>
+            <button class="meaning-toggle" id="w-meaning-toggle" type="button">Show meaning</button>
+            <div class="word-meaning" id="w-meaning" hidden></div>
+            <div class="example" id="w-example-wrap">
+              <div class="label">Example</div>
+              <div class="example-text" id="w-example"></div>
+              <div class="example-py" id="w-example-py" hidden></div>
+              <div class="example-tr" id="w-example-tr" hidden></div>
+            </div>
+          </article>
+
+          <div class="wordnav">
+            <button class="ghost" id="prev-word" type="button">← Previous word</button>
+            <button class="ghost" id="next-word" type="button">Next word →</button>
+          </div>
+          <div class="done-row">
+            <button class="secondary" id="done-btn" type="button">Done for today</button>
+            <div class="done-msg" id="done-msg" hidden></div>
+          </div>
         </div>
-      </article>
 
-      <div class="composer">
-        <label class="label" for="input-text">Your sentences</label>
-        <textarea id="input-text" rows="4" spellcheck="false"></textarea>
-        <div class="composer-actions">
-          <span class="hint">Ctrl/⌘ + Enter to check</span>
-          <button class="primary" id="check-btn" type="button">Check</button>
+        <div class="study-main">
+          <div class="composer">
+            <label class="label" for="input-text">Your sentences</label>
+            <textarea id="input-text" rows="4" spellcheck="false"></textarea>
+            <div class="composer-actions">
+              <span class="hint">Ctrl/⌘ + Enter to check</span>
+              <button class="primary" id="check-btn" type="button">Check</button>
+            </div>
+            <div class="status" id="status" hidden></div>
+          </div>
+
+          <div id="result"></div>
+
+          <div class="chat" id="chat" hidden>
+            <div class="label">Ask about these corrections</div>
+            <div class="chat-log" id="chat-log"></div>
+            <div class="chat-input-row">
+              <textarea id="chat-input" rows="2" placeholder="e.g. Why is 了 wrong here? Can I say … instead?"></textarea>
+              <button class="primary" id="chat-send" type="button">Ask</button>
+            </div>
+            <div class="status" id="chat-status" hidden></div>
+          </div>
+
+          <details class="history" id="history" hidden>
+            <summary id="history-summary">Previous attempts</summary>
+            <div id="history-list"></div>
+          </details>
+
         </div>
-        <div class="status" id="status" hidden></div>
-      </div>
-
-      <div id="result"></div>
-
-      <div class="chat" id="chat" hidden>
-        <div class="label">Ask about these corrections</div>
-        <div class="chat-log" id="chat-log"></div>
-        <div class="chat-input-row">
-          <textarea id="chat-input" rows="2" placeholder="e.g. Why is 了 wrong here? Can I say … instead?"></textarea>
-          <button class="primary" id="chat-send" type="button">Ask</button>
-        </div>
-        <div class="status" id="chat-status" hidden></div>
-      </div>
-
-      <details class="history" id="history" hidden>
-        <summary id="history-summary">Previous attempts</summary>
-        <div id="history-list"></div>
-      </details>
-
-      <div class="wordnav">
-        <button class="ghost" id="prev-word" type="button">← Previous word</button>
-        <button class="ghost" id="next-word" type="button">Next word →</button>
-      </div>
-      <div class="done-row">
-        <button class="secondary" id="done-btn" type="button">Done for today</button>
-        <div class="done-msg" id="done-msg" hidden></div>
       </div>
     </section>
 
