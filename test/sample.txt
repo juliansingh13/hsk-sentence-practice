@@ -1,0 +1,9 @@
+#separator:tab
+#html:true
+#guid column:1
+#notetype column:2
+#deck column:3
+#tags column:8
+abc123	Chinese	HSK4	安排	ān pái	to arrange; to plan	"老师<b>安排</b>我们明天去参观。<br>Lǎoshī ānpái wǒmen míngtiān qù cānguān."	HSK4
+abc124	Chinese	HSK4	按时	àn shí	on time	请按时完成作业。	HSK4
+abc125	Chinese	HSK4	保护	bǎo hù	to protect	我们要保护环境&nbsp;。	HSK4

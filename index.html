@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>造句 · HSK Sentence Practice</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23b4412f'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white'>句</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="seal">句</span><span class="brand-text">造句练习</span></div>
+    <nav class="topnav">
+      <button id="nav-study" class="navbtn" type="button">Study</button>
+      <button id="nav-settings" class="navbtn" type="button">Settings</button>
+    </nav>
+  </header>
+
+  <main id="app">
+    <!-- STUDY VIEW -->
+    <section id="view-study" hidden>
+      <div class="daybar">
+        <button class="iconbtn" id="prev-day" type="button" title="Previous block">‹</button>
+        <div class="dayinfo">
+          <div class="daytitle" id="day-title"></div>
+          <div class="daysub" id="day-sub"></div>
+        </div>
+        <button class="iconbtn" id="next-day" type="button" title="Next block">›</button>
+      </div>
+
+      <div class="chips" id="word-chips"></div>
+
+      <article class="card" id="word-card">
+        <div class="word-hanzi" id="w-hanzi"></div>
+        <div class="word-pinyin" id="w-pinyin"></div>
+        <button class="meaning-toggle" id="w-meaning-toggle" type="button">Show meaning</button>
+        <div class="word-meaning" id="w-meaning" hidden></div>
+        <div class="example" id="w-example-wrap">
+          <div class="label">Example</div>
+          <div class="example-text" id="w-example"></div>
+        </div>
+      </article>
+
+      <div class="composer">
+        <label class="label" for="input-text">Your sentences</label>
+        <textarea id="input-text" rows="4" spellcheck="false"></textarea>
+        <div class="composer-actions">
+          <span class="hint">Ctrl/⌘ + Enter to check</span>
+          <button class="primary" id="check-btn" type="button">Check</button>
+        </div>
+        <div class="status" id="status" hidden></div>
+      </div>
+
+      <div id="result"></div>
+
+      <details class="history" id="history" hidden>
+        <summary id="history-summary">Previous attempts</summary>
+        <div id="history-list"></div>
+      </details>
+
+      <div class="wordnav">
+        <button class="ghost" id="prev-word" type="button">← Previous word</button>
+        <button class="ghost" id="next-word" type="button">Next word →</button>
+      </div>
+      <div class="done-row">
+        <button class="secondary" id="done-btn" type="button">Done for today</button>
+        <div class="done-msg" id="done-msg" hidden></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS VIEW -->
+    <section id="view-settings" hidden>
+      <div class="panel">
+        <h2>1 · Vocabulary list</h2>
+        <p class="muted">In Anki: <em>File → Export…</em>, choose <em>Notes in Plain Text (.txt)</em>, and untick “Include HTML and media references”. Any tab- or comma-separated file also works.</p>
+        <div class="current-deck" id="current-deck"></div>
+        <label class="filebtn">
+          <input type="file" id="file-input" accept=".txt,.tsv,.csv,text/plain,text/csv">
+          <span>Choose file…</span>
+        </label>
+        <div id="mapping" hidden>
+          <p class="muted" id="mapping-info"></p>
+          <div class="mapping-grid">
+            <label>Word (汉字)<select id="map-hanzi"></select></label>
+            <label>Pinyin<select id="map-pinyin"></select></label>
+            <label>Meaning<select id="map-meaning"></select></label>
+            <label>Example sentence<select id="map-example"></select></label>
+          </div>
+          <label class="check"><input type="checkbox" id="skip-first"> First row is a header</label>
+          <div class="preview-wrap"><table class="preview" id="preview"></table></div>
+          <button class="primary" id="use-deck" type="button">Use this list</button>
+        </div>
+      </div>
+
+      <div class="panel" id="plan-panel">
+        <h2>2 · Daily plan</h2>
+        <div class="plan-grid">
+          <label>New words per day
+            <input type="number" id="per-day" min="1" max="100" step="1" value="7">
+          </label>
+          <label>Find word
+            <input type="text" id="start-search" placeholder="汉字 or pinyin">
+          </label>
+        </div>
+        <label>Today’s first word
+          <select id="start-select"></select>
+        </label>
+        <p class="muted">The block of words moves forward on the next calendar day only after you press “Done for today”, so a skipped day doesn’t put you out of step with Anki.</p>
+      </div>
+
+      <div class="panel">
+        <h2>3 · Passphrase</h2>
+        <p class="muted">The passphrase you set as <code>APP_PASSPHRASE</code> on the server. It is stored only in this browser.</p>
+        <input type="password" id="passphrase" autocomplete="current-password" placeholder="Passphrase">
+      </div>
+
+      <div class="panel">
+        <h2>Backup</h2>
+        <p class="muted">Progress and past attempts live in this browser. Export them to move to another device.</p>
+        <div class="row">
+          <button class="ghost" id="export-btn" type="button">Export data</button>
+          <label class="filebtn ghostfile"><input type="file" id="import-input" accept=".json,application/json"><span>Import data</span></label>
+        </div>
+      </div>
+
+      <div class="save-row">
+        <button class="primary" id="save-settings" type="button">Save and start</button>
+        <span class="status-inline" id="settings-status"></span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
