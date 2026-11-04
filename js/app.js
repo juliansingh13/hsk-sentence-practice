@@ -1,6 +1,8 @@
 import { parseAnkiExport, guessMapping, buildWords } from './anki.js';
-import { escapeHtml, highlightHtml } from './highlight.js';
+import { escapeHtml } from './highlight.js';
 import { checkMessages, chatMessages, normalizeCheck, callDeepSeek, safeJson } from './prompts.js';
+import { renderResult, msgHtml } from './render.js';
+import { initGrammar } from './grammar.js';
 
 const STORE_KEY = 'hskw.v1';
 const $ = (id) => document.getElementById(id);
@@ -12,6 +14,7 @@ function defaultState() {
     settings: { perDay: 7, apiKey: '', passphrase: '' },
     progress: { blockStart: 0, blockDate: today(), completed: false, wordPos: 0 },
     history: {}, // key -> [{ text, result, ts }]
+    grammar: { active: {}, stats: {}, generated: [], seen: {}, log: [] },
   };
 }
 function load() {
@@ -59,15 +62,18 @@ function rollover() {
 
 // ---------- views ----------
 function show(view) {
-  $('view-study').hidden = view !== 'study';
-  $('view-settings').hidden = view !== 'settings';
-  $('nav-study').classList.toggle('active', view === 'study');
-  $('nav-settings').classList.toggle('active', view === 'settings');
+  for (const v of ['study', 'grammar', 'settings']) {
+    $('view-' + v).hidden = view !== v;
+    $('nav-' + v).classList.toggle('active', view === v);
+  }
   if (view === 'study') renderStudy();
   if (view === 'settings') renderSettings();
+  if (view === 'grammar') grammar.render();
+  try { sessionStorage.setItem('hskw.view', view); } catch {}
   window.scrollTo(0, 0);
 }
 $('nav-study').onclick = () => (state.deck ? show('study') : show('settings'));
+$('nav-grammar').onclick = () => show('grammar');
 $('nav-settings').onclick = () => show('settings');
 
 // ---------- study ----------
@@ -164,58 +170,6 @@ $('w-meaning-toggle').onclick = () => {
   m.hidden = !m.hidden;
   $('w-meaning-toggle').textContent = m.hidden ? 'Show meaning' : 'Hide meaning';
 };
-
-const TYPE_LABEL = { target_word: 'Target word', grammar: 'Grammar', naturalness: 'Naturalness' };
-
-function renderResult(r) {
-  if (!r || !Array.isArray(r.sentences)) return '';
-  let html = '<div class="result">';
-  html += '<div class="legend"><span class="l-tw">Target word</span><span class="l-gr">Grammar</span><span class="l-nat">Naturalness</span></div>';
-  if (r.overall || r.target_word_feedback) {
-    html += '<div class="summary">';
-    if (r.overall) html += `<p>${escapeHtml(r.overall)}</p>`;
-    if (r.target_word_feedback) html += `<p class="tw-feedback"><strong>Target word:</strong> ${escapeHtml(r.target_word_feedback)}</p>`;
-    html += '</div>';
-  }
-  r.sentences.forEach((s, si) => {
-    const errs = s.errors || [];
-    const labels = errs.map((_, i) => i + 1);
-    const { html: sentHtml, positions } = highlightHtml(s.original, errs, labels);
-    const hasTw = errs.some(e => e.type === 'target_word');
-    const onlyNat = errs.length && errs.every(e => e.type === 'naturalness');
-    let badge;
-    if (!errs.length) badge = '<span class="badge ok">Correct</span>';
-    else if (onlyNat) badge = '<span class="badge warn">Unnatural</span>';
-    else badge = `<span class="badge bad">${errs.length} issue${errs.length > 1 ? 's' : ''}</span>`;
-    if (!s.target_word_used && !hasTw) badge += ' <span class="badge warn">Word not used</span>';
-
-    html += `<div class="sentence" data-s="${si}">`;
-    html += `<div class="sentence-head"><div class="sentence-text">${sentHtml}</div><div>${badge}</div></div>`;
-    if (errs.length) {
-      html += '<ol class="errors">';
-      errs.forEach((e, i) => {
-        const fix = e.span || e.suggestion
-          ? `<div class="fix">${e.span ? `<span class="from">${escapeHtml(e.span)}</span>` : ''}${e.span ? ' → ' : ''}${e.suggestion ? `<span class="to">${escapeHtml(e.suggestion)}</span>` : '<span class="remove">remove</span>'}</div>`
-          : '';
-        const unloc = e.span && !positions[i] ? '<div class="unlocated">(could not mark this in the sentence)</div>' : '';
-        html += `<li data-err="${i}"><span class="num t-${escapeHtml(e.type)}">${labels[i]}</span><div>`
-          + `<div class="err-type">${TYPE_LABEL[e.type] || e.type}</div>${fix}<div class="explain">${escapeHtml(e.explanation)}</div>${unloc}</div></li>`;
-      });
-      html += '</ol>';
-    }
-    const showCorr = s.corrected && s.corrected !== s.original;
-    const showNat = s.natural && s.natural !== s.corrected && s.natural !== s.original;
-    if (showCorr || showNat) {
-      html += '<div class="versions">';
-      if (showCorr) html += `<div><span class="vlabel">Corrected</span>${escapeHtml(s.corrected)}</div>`;
-      if (showNat) html += `<div><span class="vlabel">Natural</span>${escapeHtml(s.natural)}</div>`;
-      html += '</div>';
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-  return html;
-}
 
 // Clicking an explanation flashes its highlight, and vice versa.
 document.addEventListener('click', (ev) => {
@@ -414,22 +368,6 @@ document.addEventListener('click', (e) => {
 $('word-search').addEventListener('focus', () => { if ($('word-search').value.trim()) renderSearch(); });
 
 // ---------- follow-up chat ----------
-function mdLite(text) {
-  // Escape, then allow **bold** and "- " bullet lists.
-  const lines = escapeHtml(text).split('\n');
-  let out = '', inList = false;
-  for (const line of lines) {
-    const m = line.match(/^\s*[-*•]\s+(.*)$/);
-    if (m) { if (!inList) { out += '<ul>'; inList = true; } out += `<li>${m[1]}</li>`; continue; }
-    if (inList) { out += '</ul>'; inList = false; }
-    out += line + '\n';
-  }
-  if (inList) out += '</ul>';
-  return out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n+$/, '');
-}
-function msgHtml(m) {
-  return `<div class="msg ${m.role === 'user' ? 'user' : 'assistant'}">${m.role === 'user' ? escapeHtml(m.content) : mdLite(m.content)}</div>`;
-}
 function renderChat() {
   const active = !!(lastResult && lastResult.entry);
   $('chat').hidden = !active;
@@ -590,7 +528,9 @@ $('save-settings').onclick = () => {
     if (changed) state.history = {};
     pending = null;
   }
-  if (!state.deck) { $('settings-status').textContent = 'Load a vocabulary list first.'; return; }
+  state.settings.passphrase = pass;
+  state.settings.apiKey = apiKey;
+  if (!state.deck) { save(); $('settings-status').textContent = 'Key saved. Load a vocabulary list for the Words section; the Grammar section works without one.'; return; }
   const p = state.progress;
   if (newDeck || start !== p.blockStart || per !== state.settings.perDay) {
     state.progress = { blockStart: start, blockDate: today(), completed: false, wordPos: 0 };
@@ -617,9 +557,10 @@ $('import-input').addEventListener('change', async (e) => {
   if (!f) return;
   try {
     const data = JSON.parse(await f.text());
-    if (!data || !data.deck || !Array.isArray(data.deck.words)) throw new Error('Not a backup file.');
+    if (!data || typeof data !== 'object' || !(data.deck?.words || data.grammar)) throw new Error('Not a backup file.');
     const keep = { apiKey: state.settings.apiKey, passphrase: state.settings.passphrase };
     state = { ...defaultState(), ...data };
+    state.grammar = { ...defaultState().grammar, ...(data.grammar || {}) };
     state.settings = { ...defaultState().settings, ...(data.settings || {}), ...keep };
     save();
     $('settings-status').textContent = 'Backup imported.';
@@ -634,4 +575,20 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && !$('view-study').hidden) renderStudy();
 });
 
-show(state.deck ? 'study' : 'settings');
+const grammar = initGrammar({
+  getState: () => state,
+  save,
+  hasCredentials,
+  callModel: async ({ action, payload, messages, json, temperature, maxTokens }) => {
+    if (state.settings.apiKey) return callDeepSeek({ key: state.settings.apiKey, messages, json, temperature, maxTokens });
+    const data = await postServer('/api/grammar', { passphrase: state.settings.passphrase, action, ...payload });
+    return data.content;
+  },
+  goSettings: () => show('settings'),
+});
+
+let startView = null;
+try { startView = sessionStorage.getItem('hskw.view'); } catch {}
+if (startView === 'grammar') show('grammar');
+else if (startView === 'settings') show('settings');
+else show(state.deck ? 'study' : 'settings');

@@ -1,0 +1,243 @@
+// Built-in grammar structures (HSK 3–5) and a hand-written question bank.
+//
+// Structure: { id, p: pattern, py: pinyin, g: group, lvl, m: [meanings], note, cf: [confusable ids] }
+// Item types (in the seed bank the correct option is always first; the UI shuffles):
+//   choice: { s, t:'choice', q: sentence with "__" blanks, o: options ("A……B" fills two blanks), w: why, en }
+//   judge:  { s, t:'judge', p?: prompt, o: full sentences, w, en }
+//   order:  { s, t:'order', parts: clauses in the correct order (joined with "，", ending "。"), w?, en }
+
+export const GROUPS = {
+  time: 'Time and sequence',
+  cond: 'Condition',
+  conc: 'Concession and contrast',
+  cause: 'Cause and effect',
+  add: 'Addition and escalation',
+  choice: 'Choice and preference',
+  comp: 'Comparison',
+  frame: 'Framing and scope',
+  pat: 'Sentence patterns and complements',
+};
+
+export const STRUCTURES = [
+  // time
+  { id: 'yijiu', p: '一……就……', py: 'yī……jiù……', g: 'time', lvl: 3, m: ['as soon as', 'whenever (habit)', 'it only takes … to …'], note: '就 stands after the subject of the second clause. 一 is yí before a 4th tone, yì before the others.', cf: ['gangjiu', 'zhiyaojiu'] },
+  { id: 'gangjiu', p: '刚……就……', py: 'gāng……jiù……', g: 'time', lvl: 4, m: ['had only just … when …'], note: '刚 is an adverb right before the verb. 刚才 is a time word ("a moment ago") and does not form this pattern.', cf: ['yijiu'] },
+  { id: 'dengzai', p: '等……再……', py: 'děng……zài……', g: 'time', lvl: 4, m: ['wait until …, then …'], note: 'Postpones a future action until a condition is met. For past events Chinese uses 才, not 再.', cf: ['zhidaocai'] },
+  { id: 'zhidaocai', p: '直到……才……', py: 'zhídào……cái……', g: 'time', lvl: 4, m: ['not until …'], note: '才 marks something as happening late, so it pairs with 才, not 就, and the 才 clause usually has no 了.', cf: ['dengzai', 'yijiu'] },
+  { id: 'zicong', p: '自从……以来/以后', py: 'zìcóng……yǐlái/yǐhòu', g: 'time', lvl: 4, m: ['ever since (a point in the past)'], note: 'Only for a starting point in the past. 以来 stresses that the situation continues up to now.', cf: ['suizhe'] },
+  { id: 'suizhe', p: '随着……', py: 'suízhe……', g: 'time', lvl: 4, m: ['along with, as (something changes)'], note: 'The 随着 phrase names a change (经济的发展, 年龄的增长), and the main clause describes a change that follows from it.', cf: ['zicong', 'youyu'] },
+  // condition
+  { id: 'zhiyaojiu', p: '只要……就……', py: 'zhǐyào……jiù……', g: 'cond', lvl: 4, m: ['as long as (this is enough)'], note: 'Sufficient condition; pairs with 就. Often reassuring.', cf: ['zhiyoucai', 'wulun'] },
+  { id: 'zhiyoucai', p: '只有……才……', py: 'zhǐyǒu……cái……', g: 'cond', lvl: 4, m: ['only if (nothing else will do)'], note: 'Necessary condition; pairs with 才. Often restrictive.', cf: ['zhiyaojiu', 'chufei'] },
+  { id: 'wulun', p: '无论/不管……都……', py: 'wúlùn/bùguǎn……dōu……', g: 'cond', lvl: 4, m: ['no matter what/how/whether'], note: 'The first clause needs a question word, an A不A form or 还是. A plain statement is wrong (✗ 不管天气很冷).', cf: ['jishi', 'zhiyaojiu'] },
+  { id: 'jiran', p: '既然……就……', py: 'jìrán……jiù……', g: 'cond', lvl: 4, m: ['since (given that) …, then …'], note: 'States a fact both speakers accept; the second clause draws a conclusion or makes a suggestion. It is not "although".', cf: ['jinguan', 'youyu'] },
+  { id: 'chufei', p: '除非……否则/不然……', py: 'chúfēi……fǒuzé/bùrán……', g: 'cond', lvl: 5, m: ['unless …, otherwise …', 'only if (除非……才)'], note: '除非 introduces the one necessary condition: 除非A，否则不B = B only if A.', cf: ['zhiyoucai'] },
+  { id: 'yaobushi', p: '要不是……', py: 'yàobúshì……', g: 'cond', lvl: 5, m: ['if it weren\'t for …'], note: 'Counterfactual about something that really happened; the result clause often has 就/早就……了.', cf: ['wanyi', 'jiran'] },
+  { id: 'wanyi', p: '万一……', py: 'wànyī……', g: 'cond', lvl: 4, m: ['in case, if by chance (something bad happens)'], note: 'Usually an unwanted possibility, followed by 怎么办 or a precaution.', cf: ['yaobushi', 'jishi'] },
+  // concession
+  { id: 'jishi', p: '即使/哪怕……也……', py: 'jíshǐ/nǎpà……yě……', g: 'conc', lvl: 4, m: ['even if'], note: 'Pairs with 也, not 但是. Usually hypothetical; for a known fact use 虽然/尽管.', cf: ['jinguan', 'wulun'] },
+  { id: 'jinguan', p: '尽管……还是/却……', py: 'jǐnguǎn……háishi/què……', g: 'conc', lvl: 4, m: ['although, despite the fact that'], note: 'Concedes a real fact, like 虽然 but stronger. 却 is an adverb and goes after the subject.', cf: ['jishi', 'jiran'] },
+  { id: 'raner', p: '……，然而……', py: '……, rán\'ér……', g: 'conc', lvl: 5, m: ['however (written)'], note: 'Starts the contrasting clause; formal register.', cf: ['yushi'] },
+  { id: 'bushierer', p: '不是……而是……', py: 'búshì……érshì……', g: 'conc', lvl: 4, m: ['not A but (rather) B'], note: 'Rejects A and asserts B, often correcting an assumption.', cf: ['bushijiushi', 'bing'] },
+  { id: 'bujinfaner', p: '不仅/不但不……反而……', py: 'bùjǐn/búdàn bù……fǎn\'ér……', g: 'conc', lvl: 5, m: ['not only not …, but on the contrary …'], note: 'The outcome runs opposite to what was expected.', cf: ['bujin'] },
+  { id: 'bing', p: '并不/并没有……', py: 'bìng bù/bìng méiyǒu……', g: 'conc', lvl: 4, m: ['actually not (contrary to what you\'d think)'], note: '并 goes directly before 不/没 and refutes an assumption.', cf: ['bushierer'] },
+  // cause
+  { id: 'youyu', p: '由于……因此/所以……', py: 'yóuyú……yīncǐ/suǒyǐ……', g: 'cause', lvl: 4, m: ['due to …, therefore …'], note: 'More formal than 因为. 由于 can pair with 因此; 因为 normally pairs with 所以.', cf: ['zhisuoyi', 'yushi'] },
+  { id: 'yushi', p: '……，于是……', py: '……, yúshì……', g: 'cause', lvl: 4, m: ['and so, thereupon (what happened next)'], note: 'Narrates the next action, prompted by what came before. Not for general logical conclusions.', cf: ['youyu', 'kejian'] },
+  { id: 'zhisuoyi', p: '之所以……是因为……', py: 'zhīsuǒyǐ……shì yīnwèi……', g: 'cause', lvl: 5, m: ['the reason why … is that …'], note: 'Result first, cause second. Pairs with 是因为, never with 所以.', cf: ['youyu'] },
+  { id: 'kejian', p: '……，可见……', py: '……, kějiàn……', g: 'cause', lvl: 5, m: ['which shows that'], note: 'Draws a conclusion from the evidence just given.', cf: ['yushi'] },
+  // addition
+  { id: 'bujin', p: '不仅……还/也/而且……', py: 'bùjǐn……hái/yě/érqiě……', g: 'add', lvl: 4, m: ['not only … but also …'], note: 'Same subject: 不仅 comes after it (他不仅……). Different subjects: 不仅 comes before the first (不仅他……，他妹妹也……).', cf: ['jiyou', 'bujinfaner'] },
+  { id: 'jiyou', p: '既……又/也……', py: 'jì……yòu/yě……', g: 'add', lvl: 4, m: ['both … and …'], note: 'Two parallel qualities or roles of one subject; 既 and 又 both go after the subject.', cf: ['bujin', 'yifangmian'] },
+  { id: 'yifangmian', p: '一方面……另一方面……', py: 'yì fāngmiàn……lìng yì fāngmiàn……', g: 'add', lvl: 4, m: ['on one hand … on the other'], note: 'Two aspects or reasons, usually full clauses.', cf: ['jiyou'] },
+  { id: 'liandou', p: '连……都/也……', py: 'lián……dōu/yě……', g: 'add', lvl: 4, m: ['even'], note: 'The 连 phrase (the extreme case) comes before the verb, followed by 都/也.', cf: ['shenzhi', 'hekuang'] },
+  { id: 'shenzhi', p: '……，甚至……', py: '……, shènzhì……', g: 'add', lvl: 4, m: ['even, to the point of'], note: 'Goes one step further in the same direction.', cf: ['hekuang', 'liandou'] },
+  { id: 'hekuang', p: '……，何况……', py: '……, hékuàng……', g: 'add', lvl: 5, m: ['let alone; all the more so'], note: 'After an extreme case, the weaker case follows obviously; often 何况……呢.', cf: ['shenzhi', 'liandou'] },
+  // choice
+  { id: 'yaome', p: '要么……要么……', py: 'yàome……yàome……', g: 'choice', lvl: 4, m: ['either … or (pick one)'], note: 'Offers options to choose between.', cf: ['bushijiushi'] },
+  { id: 'bushijiushi', p: '不是……就是……', py: 'búshì……jiùshì……', g: 'choice', lvl: 4, m: ['if not A then B; always one or the other'], note: 'Describes what is in fact the case. Compare 不是……而是 (not A but B).', cf: ['bushierer', 'yaome'] },
+  { id: 'yuqi', p: '与其……不如……', py: 'yǔqí……bùrú……', g: 'choice', lvl: 5, m: ['rather than A, better B'], note: 'The recommended option comes after 不如.', cf: ['ningke', 'buru'] },
+  { id: 'ningke', p: '宁可……也不/也要……', py: 'nìngkě……yě bù/yě yào……', g: 'choice', lvl: 5, m: ['would rather … than …', 'would even … in order to …'], note: '宁可 marks the option chosen despite its cost.', cf: ['yuqi'] },
+  // comparison
+  { id: 'buru', p: 'A不如B', py: 'A bùrú B', g: 'comp', lvl: 4, m: ['A is not as (good) as B', 'might as well'], note: 'No degree words after the adjective (✗ 不如他好得多).', cf: ['xiangbi', 'yuqi'] },
+  { id: 'xiangbi', p: '与/和……相比', py: 'yǔ/hé……xiāngbǐ', g: 'comp', lvl: 4, m: ['compared with …'], note: 'Usually opens the sentence; the main clause then gives the comparison without 比.', cf: ['buru'] },
+  { id: 'yueyue', p: '越……越……', py: 'yuè……yuè……', g: 'comp', lvl: 3, m: ['the more … the more …'], note: 'Each 越 directly before a verb or adjective; the clauses can have different subjects (你越说，他越生气).', cf: [] },
+  { id: 'zhiyi', p: '……之一', py: '……zhī yī', g: 'comp', lvl: 4, m: ['one of …'], note: 'Comes after the group, usually with 最 (最有名的……之一).', cf: [] },
+  // framing
+  { id: 'duilaishuo', p: '对……来说', py: 'duì……lái shuō', g: 'frame', lvl: 4, m: ['for (someone); from their perspective'], note: '"In my view" is 在我看来; ✗ 对我来看, ✗ 对我看来.', cf: ['zaifangmian'] },
+  { id: 'zaifangmian', p: '在……方面', py: 'zài……fāngmiàn', g: 'frame', lvl: 4, m: ['in terms of, when it comes to'], note: 'Narrows the topic to one area.', cf: ['duilaishuo', 'zaixia'] },
+  { id: 'zaixia', p: '在……下', py: 'zài……xià', g: 'frame', lvl: 4, m: ['under (conditions, help, influence)'], note: 'Typical nouns: 帮助, 支持, 影响, 情况 (在老师的帮助下).', cf: ['zaifangmian'] },
+  { id: 'yiwei', p: '以……为……', py: 'yǐ……wéi……', g: 'frame', lvl: 5, m: ['take A as B'], note: 'Formal; common as 以……为主/中心/目标/例.', cf: ['badang'] },
+  // patterns
+  { id: 'badang', p: '把A当作/当成B', py: 'bǎ A dàngzuò/dàngchéng B', g: 'pat', lvl: 4, m: ['treat A as B; take A for B'], note: 'A is the object being treated; the doer is the subject.', cf: ['yiwei'] },
+  { id: 'passive', p: '被/让/叫 (passive)', py: 'bèi/ràng/jiào', g: 'pat', lvl: 4, m: ['passive voice'], note: 'Negation and modal verbs go before 被 (没被, 不会被). 让/叫 are colloquial and need the agent.', cf: [] },
+  { id: 'shide', p: '是……的', py: 'shì……de', g: 'pat', lvl: 3, m: ['stressing when/where/how a past event happened'], note: 'The event is already known; no 了.', cf: [] },
+  { id: 'qilai', p: 'V起来', py: 'V qǐlai', g: 'pat', lvl: 4, m: ['when one does V (看起来, 听起来)', 'start to V'], note: 'Evaluative V起来 + adjective; also inceptive (聊了起来).', cf: ['xiaqu'] },
+  { id: 'xiaqu', p: 'V下去', py: 'V xiàqu', g: 'pat', lvl: 4, m: ['go on V-ing (from now on)'], note: 'Continuation into the future; compare V下来 (up to now) and V起来 (start).', cf: ['qilai'] },
+  { id: 'deliao', p: 'V得了/V不了', py: 'V de liǎo / V bu liǎo', g: 'pat', lvl: 4, m: ['can/can\'t manage (amount or possibility)'], note: 'Potential complement; negation goes between verb and 了 (参加不了).', cf: [] },
+  { id: 'feibuke', p: '非……不可', py: 'fēi……bùkě', g: 'pat', lvl: 5, m: ['absolutely must', 'insist on (非要)'], note: 'Strong necessity or insistence; colloquially 非要 + V alone.', cf: ['budebu'] },
+  { id: 'budebu', p: '不得不……', py: 'bùdébù……', g: 'pat', lvl: 4, m: ['have no choice but to'], note: 'Followed by an affirmative verb phrase.', cf: ['feibuke'] },
+  { id: 'nandao', p: '难道……吗？', py: 'nándào……ma?', g: 'pat', lvl: 4, m: ['surely not …? (rhetorical)'], note: 'Expresses disbelief; pairs with 吗 (or no particle), not 呢/吧.', cf: [] },
+  { id: 'qwdou', p: '疑问词 + 都/也', py: 'yíwèncí + dōu/yě', g: 'pat', lvl: 4, m: ['everyone, everything, nowhere …'], note: 'Question word, then 都/也, then the negation: 什么都不吃.', cf: ['shuishui'] },
+  { id: 'shuishui', p: '谁……谁…… (疑问词 echo)', py: 'shéi……shéi……', g: 'pat', lvl: 4, m: ['whoever …, (that person) …', 'whatever …, (that) …'], note: 'The same question word repeats in both clauses (谁先到谁买票, 你想吃什么我们就吃什么).', cf: ['qwdou'] },
+  { id: 'dongbudong', p: '动不动就……', py: 'dòngbudòng jiù……', g: 'pat', lvl: 5, m: ['at the slightest thing (a bad habit)'], note: 'Critical tone; always with 就.', cf: ['yijiu'] },
+];
+
+export const SEED_ITEMS = [
+  // ---- time ----
+  { s: 'yijiu', t: 'choice', q: '老师__进教室，学生们__安静下来了。', o: ['一……就', '一……才', '刚才……就', '只要……就'], w: '一……就 links two events in immediate succession. 就 goes after the new subject 学生们. 只要 is a condition and does not fit a single past event.', en: 'As soon as the teacher came into the classroom, the students quieted down.' },
+  { s: 'yijiu', t: 'choice', q: '这个问题很简单，你__看__明白了。', o: ['一……就', '刚……才', '只有……才', '一……才'], w: '一看就明白: it only takes one look. 才 would mean "only then, late", which clashes with 很简单 and with 了.', en: 'This problem is simple; you\'ll get it the moment you look at it.' },
+  { s: 'gangjiu', t: 'choice', q: '我__到家，外面__下起雨来了。', o: ['刚……就', '刚才……就', '一……才', '等……再'], w: '刚 + verb ("had only just") pairs with 就. 刚才 is a time noun meaning "a moment ago" and cannot replace 刚 here. 等……再 is for future plans.', en: 'I had only just got home when it started raining.' },
+  { s: 'gangjiu', t: 'choice', q: '他__来北京两个月，__已经认识了很多朋友。', o: ['刚……就', '刚才……就', '一……就', '直到……才'], w: '刚 + duration: "only two months". 一 cannot take a duration like 两个月, and 才 clashes with 已经.', en: 'He has only been in Beijing for two months and already knows lots of people.' },
+  { s: 'dengzai', t: 'choice', q: '现在太晚了，__明天你休息好了__说吧。', o: ['等……再', '直到……才', '一……就', '刚……就'], w: '等……再 postpones a future action. 直到……才 and 刚……就 describe what already happened.', en: 'It\'s too late now; let\'s talk about it tomorrow once you\'ve rested.' },
+  { s: 'dengzai', t: 'choice', q: '这件事别急着决定，__我们了解清楚情况__做决定。', o: ['等……再', '直到……才', '自从……以来', '刚……就'], w: '别急着 signals postponement, so 等……再. 直到……才 narrates past lateness.', en: 'Don\'t rush the decision; let\'s decide once we understand the situation.' },
+  { s: 'zhidaocai', t: 'choice', q: '我等了他一个小时，__八点半他__来。', o: ['直到……才', '直到……就', '等……再', '自从……就'], w: '直到 pairs with 才 ("not until, later than expected"), not 就.', en: 'I waited an hour for him; he didn\'t arrive until half past eight.' },
+  { s: 'zhidaocai', t: 'choice', q: '__上了大学，我__明白父母有多辛苦。', o: ['直到……才', '一……才', '等……再', '随着……就'], w: 'A late realisation: 直到……才. 一 pairs with 就, and 等……再 is future.', en: 'It wasn\'t until I went to university that I understood how hard my parents worked.' },
+  { s: 'zicong', t: 'choice', q: '__搬到北京以来，他的汉语进步得很快。', o: ['自从', '随着', '等', '直到'], w: '以来 needs a starting point in the past: 自从……以来. 等 looks forward, 直到 marks an end point.', en: 'Since he moved to Beijing, his Chinese has improved quickly.' },
+  { s: 'zicong', t: 'choice', q: '__去年九月以来，我每天都坚持跑步。', o: ['自从', '直到', '等到', '随着'], w: '自从 + past time point + 以来, with a situation that continues to now.', en: 'Since last September I\'ve gone running every day.' },
+  { s: 'suizhe', t: 'choice', q: '__经济的发展，人们的生活水平越来越高。', o: ['随着', '自从', '对于', '一'], w: '随着 + a change (经济的发展), followed by another change. 自从 needs a time point.', en: 'With economic development, people\'s living standards keep rising.' },
+  { s: 'suizhe', t: 'choice', q: '__孩子慢慢长大，父母的担心也越来越多。', o: ['随着', '既然', '直到', '除非'], w: 'Two parallel gradual changes: 随着. 既然 states an accepted fact and leads to a conclusion.', en: 'As the children gradually grow up, their parents\' worries grow too.' },
+
+  // ---- condition ----
+  { s: 'zhiyaojiu', t: 'choice', q: '别紧张，__你按时吃药，病__会慢慢好起来的。', o: ['只要……就', '只有……就', '只要……才', '无论……就'], w: 'Reassurance ("this is enough") → 只要……就. 只有 pairs only with 才, 只要 only with 就.', en: 'Don\'t worry; as long as you take your medicine on time, you\'ll gradually get better.' },
+  { s: 'zhiyaojiu', t: 'choice', q: '__有空，他就会去图书馆看书。', o: ['只要', '只有', '无论', '即使'], w: 'The visible 就 points to 只要. 只有 needs 才, 无论 needs a question form, 即使 needs 也.', en: 'Whenever he has free time, he goes to the library to read.' },
+  { s: 'zhiyoucai', t: 'choice', q: '__你亲自去跟他说，他__会同意。', o: ['只有……才', '只要……才', '只有……就', '既然……才'], w: 'Necessary condition: 只有……才. The mixed pairs 只要……才 and 只有……就 are wrong.', en: 'He\'ll only agree if you go and talk to him yourself.' },
+  { s: 'zhiyoucai', t: 'choice', q: '这家餐厅很难订，__提前一个月打电话才订得到位子。', o: ['只有', '只要', '即使', '既然'], w: 'The 才 in the second half requires 只有. 只要 would need 就.', en: 'This restaurant is hard to book; you only get a table if you call a month ahead.' },
+  { s: 'wulun', t: 'choice', q: '__天气多冷，他每天早上__去跑步。', o: ['无论……都', '即使……都', '只要……都', '尽管……都'], w: '多冷 is an open question form ("however cold"), which needs 无论/不管……都. 即使 would need 再冷……也.', en: 'No matter how cold it is, he goes running every morning.' },
+  { s: 'wulun', t: 'judge', o: ['不管你同意不同意，我都要去。', '不管你同意，我都要去。', '不管你同意不同意，都我要去。', '即使你同意不同意，我都要去。'], w: '不管 needs an alternative (同意不同意); 都 goes after the subject 我; 即使 cannot take an A不A form.', en: 'Whether you agree or not, I\'m going.' },
+  { s: 'jiran', t: 'choice', q: '__你已经决定了，我__不再劝你了。', o: ['既然……就', '虽然……就', '尽管……就', '只有……才'], w: 'Accepted fact → conclusion: 既然……就. 虽然/尽管 are concessive and pair with 但是/还是.', en: 'Since you\'ve already decided, I won\'t try to talk you out of it any more.' },
+  { s: 'jiran', t: 'choice', q: '__大家都到了，我们__开始吧。', o: ['既然……就', '虽然……就', '直到……才', '无论……就'], w: 'A suggestion based on a fact: 既然……就……吧. 直到……才 narrates the past and does not take 吧.', en: 'Since everyone\'s here, let\'s start.' },
+  { s: 'chufei', t: 'choice', q: '__你亲自去请他，__他是不会来的。', o: ['除非……否则', '只要……否则', '即使……否则', '既然……否则'], w: '否则 ("otherwise") follows 除非, the one necessary condition.', en: 'Unless you invite him in person, he won\'t come.' },
+  { s: 'chufei', t: 'judge', p: 'Which sentence means “The match will only be cancelled if there is heavy rain”?', o: ['除非下大雨，否则比赛不会取消。', '除非下大雨，否则比赛会取消。', '只要下大雨，比赛就不会取消。', '即使下大雨，比赛也会取消。'], w: '除非A，否则不B: without A, B does not happen. The second sentence reverses the logic.', en: 'The match won\'t be cancelled unless it rains heavily.' },
+  { s: 'yaobushi', t: 'choice', q: '__你提醒我，我__把这件事忘了。', o: ['要不是……早就', '既然……早就', '万一……早就', '只要……早就'], w: 'Counterfactual: 要不是 (if it hadn\'t been for) + 早就……了 (would long since have).', en: 'If you hadn\'t reminded me, I\'d have forgotten all about it.' },
+  { s: 'yaobushi', t: 'choice', q: '__路上堵车，我们十点就到了。', o: ['要不是', '万一', '既然', '只要'], w: 'The traffic jam really happened, and the second clause says what would otherwise have happened: 要不是.', en: 'If it hadn\'t been for the traffic, we\'d have been there by ten.' },
+  { s: 'wanyi', t: 'choice', q: '多带点儿钱吧，__路上出了什么问题，也不会太麻烦。', o: ['万一', '要不是', '既然', '尽管'], w: 'A precaution against an unwanted possibility: 万一.', en: 'Take some extra money, so if anything goes wrong on the way it won\'t be a big problem.' },
+  { s: 'wanyi', t: 'choice', q: '明天要去爬山，可是__下雨怎么办？', o: ['万一', '要不是', '即使', '既然'], w: '万一……怎么办: "what if (something bad)". 即使 needs a 也 clause.', en: 'We\'re going hiking tomorrow, but what if it rains?' },
+
+  // ---- concession ----
+  { s: 'jishi', t: 'choice', q: '__明天下大雨，比赛__会照常进行。', o: ['即使……也', '虽然……也', '尽管……也', '既然……也'], w: 'A hypothetical future concession: 即使……也. 虽然/尽管 concede facts and pair with 但是/还是.', en: 'Even if it rains heavily tomorrow, the match will go ahead as planned.' },
+  { s: 'jishi', t: 'choice', q: '__只有一点点希望，我们__不能放弃。', o: ['哪怕……也', '只要……也', '既然……就', '无论……都'], w: '哪怕 = even if (colloquial 即使), pairs with 也. 无论 needs a question form.', en: 'Even if there\'s only a sliver of hope, we can\'t give up.' },
+  { s: 'jinguan', t: 'choice', q: '__他已经很努力了，这次考试__没通过。', o: ['尽管……还是', '不管……还是', '既然……还是', '要不是……还是'], w: 'Conceding a fact: 尽管……还是. 不管 needs a question form; 既然 leads to a conclusion, not a contrast.', en: 'Although he worked very hard, he still didn\'t pass this exam.' },
+  { s: 'jinguan', t: 'judge', o: ['尽管下着大雨，他却没带伞。', '尽管下着大雨，却他没带伞。', '即使下着大雨，他却没带伞。', '尽管下着大雨，他就没带伞。'], w: '却 is an adverb and goes after the subject. 即使 pairs with 也, and 就 does not mark contrast.', en: 'Even though it was pouring, he didn\'t take an umbrella.' },
+  { s: 'raner', t: 'choice', q: '大家都以为他会赢，__最后的结果让所有人都很吃惊。', o: ['然而', '于是', '可见', '何况'], w: 'The result contradicts expectations: 然而. 于是 narrates a consequence, 可见 draws a conclusion.', en: 'Everyone thought he\'d win; the final result, however, surprised everyone.' },
+  { s: 'raner', t: 'choice', q: '这个方法在理论上很完美，__在实际中很难做到。', o: ['然而', '甚至', '于是', '而且'], w: 'Theory vs practice is a contrast: 然而. 甚至 and 而且 continue in the same direction.', en: 'This method is perfect in theory, but in practice it\'s very hard to carry out.' },
+  { s: 'bushierer', t: 'choice', q: '我__不想去，__实在没有时间。', o: ['不是……而是', '不是……就是', '要么……要么', '不仅……而且'], w: 'Rejecting one explanation and giving the real one: 不是……而是.', en: 'It\'s not that I don\'t want to go; I really don\'t have time.' },
+  { s: 'bushierer', t: 'choice', q: '很多人以为他靠的是运气，其实成功的关键__运气，__坚持。', o: ['不是……而是', '不是……就是', '既……又', '要么……要么'], w: '其实 corrects the assumption: not luck, but persistence. 不是……就是 would mean "either luck or persistence".', en: 'Many people think he got there by luck, but the key to his success isn\'t luck, it\'s persistence.' },
+  { s: 'bujinfaner', t: 'choice', q: '我向他道了歉，他不仅没原谅我，__更生气了。', o: ['反而', '于是', '然而', '可见'], w: '不仅没……反而: the result is the opposite of what the apology should have achieved.', en: 'I apologised; not only did he not forgive me, he got even angrier.' },
+  { s: 'bujinfaner', t: 'choice', q: '吃了药以后，他的病__没有好，__更严重了。', o: ['不但……反而', '不是……就是', '既……又', '要么……要么'], w: 'Expected to improve, it got worse: 不但没……反而.', en: 'After taking the medicine, his illness didn\'t get better; it actually got worse.' },
+  { s: 'bing', t: 'judge', o: ['你以为他很有钱？其实他并没有那么多钱。', '你以为他很有钱？其实他没有并那么多钱。', '你以为他很有钱？其实并他没有那么多钱。', '你以为他很有钱？其实他并有那么多钱。'], w: '并 goes after the subject and directly before 不/没, and it needs the negation.', en: 'You think he\'s rich? Actually he doesn\'t have that much money.' },
+  { s: 'bing', t: 'choice', q: '这道题看起来很难，其实__不难。', o: ['并', '却', '又', '才'], w: '其实并不 refutes the impression just mentioned.', en: 'This question looks hard, but it actually isn\'t.' },
+
+  // ---- cause ----
+  { s: 'youyu', t: 'choice', q: '__天气原因，今天的航班全部取消了。', o: ['由于', '因此', '于是', '可见'], w: '由于 + cause (a noun phrase is fine). 因此/于是/可见 introduce results or conclusions.', en: 'Due to the weather, all of today\'s flights were cancelled.' },
+  { s: 'youyu', t: 'choice', q: '由于准备得很充分，__这次会议开得很成功。', o: ['因此', '于是', '然而', '何况'], w: '由于……因此 is the standard pair. 于是 narrates a next action, not a logical result.', en: 'Because the preparation was thorough, the meeting went very well.' },
+  { s: 'yushi', t: 'choice', q: '我在网上看到一家新开的饭馆，__周末就和朋友一起去尝了尝。', o: ['于是', '甚至', '然而', '可见'], w: 'Narrative "and so (I went)": 于是.', en: 'I saw a new restaurant online, so at the weekend I went with friends to try it.' },
+  { s: 'yushi', t: 'choice', q: '他等了半个小时，车还是没来，__他决定走回家。', o: ['于是', '可见', '何况', '甚至'], w: 'An action prompted by the situation: 于是. 可见 draws a conclusion.', en: 'He waited half an hour and the bus still didn\'t come, so he decided to walk home.' },
+  { s: 'zhisuoyi', t: 'choice', q: '他__选择这个专业，__对数学特别感兴趣。', o: ['之所以……是因为', '之所以……所以', '由于……是因为', '既然……是因为'], w: 'Result first with 之所以, then 是因为 + cause.', en: 'The reason he chose this major is that he\'s especially interested in maths.' },
+  { s: 'zhisuoyi', t: 'choice', q: '我__没告诉你，是因为怕你担心。', o: ['之所以', '所以', '因此', '于是'], w: '……是因为 in the second half requires 之所以 in the first.', en: 'The reason I didn\'t tell you is that I was afraid you\'d worry.' },
+  { s: 'kejian', t: 'choice', q: '他连续三天都没来上课，__病得很严重。', o: ['可见', '于是', '何况', '然而'], w: 'A conclusion drawn from the evidence: 可见.', en: 'He hasn\'t been to class for three days, which shows he must be quite ill.' },
+  { s: 'kejian', t: 'choice', q: '这么简单的题，班上一半的同学都做错了，__大家上课都没认真听。', o: ['可见', '甚至', '何况', '于是'], w: 'Evidence → conclusion: 可见.', en: 'Half the class got such an easy question wrong, which shows nobody was paying attention.' },
+
+  // ---- addition ----
+  { s: 'bujin', t: 'judge', o: ['他不仅会说汉语，还会说日语。', '不仅他会说汉语，还会说日语。', '他会说不仅汉语，还会说日语。', '他不仅会说汉语，会还说日语。'], w: 'With one subject, 不仅 goes after it and before the verb phrase. 还 goes before the verb.', en: 'He speaks not only Chinese but also Japanese.' },
+  { s: 'bujin', t: 'choice', q: '__我喜欢这部电影，我的父母__很喜欢。', o: ['不仅……也', '既……又', '一方面……也', '不是……而是'], w: 'Different subjects: 不仅 before the first subject, 也 after the second. 既……又 needs a single subject.', en: 'Not only do I like this film, my parents like it too.' },
+  { s: 'jiyou', t: 'choice', q: '这家饭馆的菜__便宜__好吃，所以每天都有很多人排队。', o: ['既……又', '不是……就是', '要么……要么', '一……就'], w: 'Two qualities of the same subject: 既……又.', en: 'The food here is both cheap and tasty, so there\'s a queue every day.' },
+  { s: 'jiyou', t: 'judge', o: ['她既是我的老师，也是我的朋友。', '她既是我的老师，而是我的朋友。', '既她是我的老师，又她是我的朋友。', '她既是我的老师，就是我的朋友。'], w: '既 pairs with 也/又, and both go after the subject.', en: 'She is both my teacher and my friend.' },
+  { s: 'yifangmian', t: 'choice', q: '我来中国，__是为了学习中文，__也是想了解中国文化。', o: ['一方面……另一方面', '不是……而是', '要么……要么', '不是……就是'], w: 'Two reasons side by side: 一方面……另一方面（也）.', en: 'I came to China partly to learn Chinese and partly to get to know Chinese culture.' },
+  { s: 'yifangmian', t: 'choice', q: '这份工作__工资不高，__离家太远，所以我没接受。', o: ['一方面……另一方面', '即使……也', '不是……而是', '只有……才'], w: 'Two reasons for one decision: 一方面……另一方面.', en: 'On the one hand the pay is low, on the other it\'s too far from home, so I turned the job down.' },
+  { s: 'liandou', t: 'choice', q: '这个字太难了，__我们老师__不认识。', o: ['连……都', '尽管……都', '不仅……都', '除非……都'], w: 'The teacher is the extreme case: 连……都.', en: 'This character is so hard that even our teacher doesn\'t know it.' },
+  { s: 'liandou', t: 'judge', o: ['他忙得连饭都没时间吃。', '他忙得连饭没时间吃。', '他忙得饭连都没时间吃。', '他忙得都连饭没时间吃。'], w: '连 + the extreme item + 都, all before the verb phrase. 都 cannot be dropped.', en: 'He\'s so busy he doesn\'t even have time to eat.' },
+  { s: 'shenzhi', t: 'choice', q: '他很喜欢这本小说，看了好几遍，__能背出里面的句子。', o: ['甚至', '何况', '于是', '然而'], w: 'One step further in the same direction: 甚至.', en: 'He loves this novel; he\'s read it several times and can even recite lines from it.' },
+  { s: 'shenzhi', t: 'choice', q: '这件事不仅同学们不知道，__连老师也不知道。', o: ['甚至', '何况', '可见', '反而'], w: '甚至连……也 escalates. 何况 goes from a strong case to a weaker one, the opposite direction.', en: 'Not only do the students not know about it; even the teacher doesn\'t.' },
+  { s: 'hekuang', t: 'choice', q: '这个箱子连大人都搬不动，__孩子呢？', o: ['何况', '甚至', '而且', '反而'], w: 'If even adults can\'t, a child obviously can\'t: 何况……呢.', en: 'Even an adult can\'t lift this box, let alone a child.' },
+  { s: 'hekuang', t: 'choice', q: '这么远的路，开车都要三个小时，__走路呢？', o: ['何况', '甚至', '于是', '可见'], w: 'Strong case (by car) → weaker case follows obviously (on foot): 何况.', en: 'It takes three hours even by car, let alone on foot.' },
+
+  // ---- choice ----
+  { s: 'yaome', t: 'choice', q: '我们__今天去，__明天去，你快决定吧。', o: ['要么……要么', '不是……而是', '既……又', '一方面……另一方面'], w: '"Decide" signals a choice between options: 要么……要么.', en: 'We either go today or tomorrow; make up your mind.' },
+  { s: 'yaome', t: 'choice', q: '__你现在就走，__别再抱怨了。', o: ['要么……要么', '不是……而是', '既……又', '不仅……还'], w: 'An ultimatum between two options: 要么……要么.', en: 'Either leave right now or stop complaining.' },
+  { s: 'bushijiushi', t: 'choice', q: '他每天晚上__在图书馆，__在实验室，很少回宿舍。', o: ['不是……就是', '不是……而是', '一方面……另一方面', '既……又'], w: 'A factual description: it\'s always one of the two. 不是……而是 would deny the library.', en: 'Every evening he\'s either in the library or in the lab; he rarely goes back to his dorm.' },
+  { s: 'bushijiushi', t: 'choice', q: '这几天__刮风，__下雨，我一直没出门。', o: ['不是……就是', '不是……而是', '即使……也', '只有……才'], w: 'Every day was one or the other: 不是……就是.', en: 'These last few days it\'s been either windy or rainy, so I haven\'t gone out.' },
+  { s: 'yuqi', t: 'choice', q: '__在家等消息，__自己去问问。', o: ['与其……不如', '与其……而是', '既然……不如', '只要……不如'], w: '与其 always pairs with 不如; the better option follows 不如.', en: 'Rather than wait at home for news, you\'d do better to go and ask yourself.' },
+  { s: 'yuqi', t: 'choice', q: '与其花钱买新的，__把旧的修一修。', o: ['不如', '反而', '而是', '何况'], w: '与其……不如.', en: 'Rather than spend money on a new one, it\'s better to fix the old one.' },
+  { s: 'ningke', t: 'choice', q: '我__走路回家，__不坐他开的车。', o: ['宁可……也', '与其……也', '只要……也', '既然……也'], w: '宁可……也不: I accept the cost (walking) to avoid the other option.', en: 'I\'d rather walk home than ride in a car he\'s driving.' },
+  { s: 'ningke', t: 'choice', q: '他__每天少睡两个小时，也要按时写完论文。', o: ['宁可', '与其', '既然', '尽管'], w: '宁可……也要: accept a cost in order to achieve something.', en: 'He\'d sleep two hours less every night if that\'s what it takes to finish his thesis on time.' },
+
+  // ---- comparison ----
+  { s: 'buru', t: 'judge', o: ['我的汉语不如他好。', '我的汉语不如他很好。', '我的汉语不如他的好得多。', '我的汉语比不如他好。'], w: 'A不如B + bare adjective; no 很 or 得多, and no 比.', en: 'My Chinese isn\'t as good as his.' },
+  { s: 'buru', t: 'choice', q: '坐公共汽车太慢了，我们__坐地铁吧。', o: ['不如', '与其', '宁可', '何况'], w: '不如 alone = "might as well, better to". 与其 and 宁可 need a second clause.', en: 'The bus is too slow; we might as well take the subway.' },
+  { s: 'xiangbi', t: 'choice', q: '__十年前__，这个城市的变化非常大。', o: ['和……相比', '在……下', '对……来说', '随着……以来'], w: '和/与……相比 sets up the comparison point.', en: 'Compared with ten years ago, the city has changed enormously.' },
+  { s: 'xiangbi', t: 'judge', o: ['和北京相比，上海的冬天暖和多了。', '和北京相比，上海的冬天很暖和多了。', '比北京相比，上海的冬天暖和多了。', '和北京相比，上海的冬天比暖和。'], w: '和……相比, then adjective + 多了 without 很 and without 比.', en: 'Compared with Beijing, Shanghai\'s winters are much warmer.' },
+  { s: 'yueyue', t: 'judge', o: ['雨越下越大，我们只好回家了。', '雨下越越大，我们只好回家了。', '越雨下越大，我们只好回家了。', '雨越下越很大，我们只好回家了。'], w: 'Each 越 directly before its verb or adjective, with no degree adverb.', en: 'The rain kept getting heavier, so we had to go home.' },
+  { s: 'yueyue', t: 'choice', q: '你越解释，他__生气。', o: ['越', '就', '更', '才'], w: 'The first 越 needs a second 越, even with a different subject.', en: 'The more you explain, the angrier he gets.' },
+  { s: 'yueyue', t: 'choice', q: '这本书我__看__喜欢。', o: ['越……越', '又……又', '既……也', '不是……就是'], w: 'One change driving another: 越……越.', en: 'The more I read this book, the more I like it.' },
+  { s: 'zhiyi', t: 'judge', o: ['长城是中国最有名的景点之一。', '长城是之一中国最有名的景点。', '长城是中国最有名的一个景点之一。', '长城是之一最有名的中国景点。'], w: '之一 comes at the end, after the whole group, with no measure word.', en: 'The Great Wall is one of China\'s most famous sights.' },
+
+  // ---- framing ----
+  { s: 'duilaishuo', t: 'choice', q: '__我__，学汉语最难的是声调。', o: ['对……来说', '对……来看', '在……下', '以……为'], w: '对……来说 = for me, from my perspective. 对……来看 does not exist.', en: 'For me, the hardest thing about learning Chinese is the tones.' },
+  { s: 'duilaishuo', t: 'judge', o: ['在我看来，这个计划有很多问题。', '对我来看，这个计划有很多问题。', '对我看来，这个计划有很多问题。', '我对来说，这个计划有很多问题。'], w: '"In my view" is 在我看来. 对 combines with 来说, not with 看来/来看.', en: 'In my view, this plan has a lot of problems.' },
+  { s: 'zaifangmian', t: 'choice', q: '__学习__，他从来不需要父母操心。', o: ['在……方面', '在……下', '对……来看', '随着……方面'], w: '在……方面 narrows the topic to one area.', en: 'When it comes to studying, his parents never have to worry about him.' },
+  { s: 'zaixia', t: 'choice', q: '__老师的帮助__，我的汉语水平提高得很快。', o: ['在……下', '在……中', '对……来说', '和……相比'], w: 'The fixed frame is 在……的帮助下.', en: 'With the teacher\'s help, my Chinese improved quickly.' },
+  { s: 'zaixia', t: 'choice', q: '在这种情况__，我们只能先等等再说。', o: ['下', '上', '里', '后'], w: '在……情况下 is the fixed frame.', en: 'In this situation, all we can do is wait and see.' },
+  { s: 'yiwei', t: 'choice', q: '这家公司的产品__年轻人__主要客户。', o: ['以……为', '把……为', '对……为', '在……为'], w: '以A为B. 把 would need 作为/当作.', en: 'This company\'s products mainly target young people.' },
+  { s: 'yiwei', t: 'choice', q: '我们的课堂应该__学生__中心。', o: ['以……为', '以……是', '把……是', '对……为'], w: 'Fixed phrase 以……为中心; 为 here is wéi, not 是.', en: 'Our classes should be student-centred.' },
+
+  // ---- patterns ----
+  { s: 'badang', t: 'choice', q: '她一直__我__自己的亲妹妹。', o: ['把……当作', '跟……当作', '以……当作', '对……当作'], w: '把A当作B: she treats me (A) as B.', en: 'She has always treated me like her own little sister.' },
+  { s: 'badang', t: 'choice', q: '别__这件事__玩笑，他是认真的。', o: ['把……当成', '以……为', '对……当成', '被……当成'], w: '把……当成: don\'t take this as a joke.', en: 'Don\'t treat this as a joke; he\'s serious.' },
+  { s: 'passive', t: 'judge', o: ['我的钱包被小偷偷走了。', '我的钱包被小偷偷了走。', '我的钱包被小偷没偷走。', '我的钱包没被小偷偷走了。'], w: 'The complement 走 attaches directly to the verb, 了 comes after it, and negation goes before 被 without 了.', en: 'My wallet was stolen by a thief.' },
+  { s: 'passive', t: 'choice', q: '我的作业__弟弟弄丢了，所以没交。', o: ['让', '把', '使', '对'], w: 'Colloquial passive with 让 + agent. 把 would make the homework the doer; 使 is causative.', en: 'My little brother lost my homework, so I didn\'t hand it in.' },
+  { s: 'shide', t: 'judge', o: ['我是去年九月来北京的。', '我是去年九月来北京了。', '我是去年九月来了北京的。', '我是去年九月来北京的了。'], w: '是……的 stresses the time of a known past event and does not take 了.', en: 'I came to Beijing last September.' },
+  { s: 'shide', t: 'choice', q: '你们是怎么认识__？', o: ['的', '了', '过', '着'], w: 'Asking how a past event happened: 是……的.', en: 'How did you two meet?' },
+  { s: 'qilai', t: 'choice', q: '这件衣服看__很贵，其实很便宜。', o: ['起来', '下去', '出来', '上来'], w: 'Evaluative V起来 + adjective: "looks expensive".', en: 'This top looks expensive, but it\'s actually cheap.' },
+  { s: 'qilai', t: 'choice', q: '他们一见面就聊了__，一聊就是两个小时。', o: ['起来', '下去', '上去', '过来'], w: 'Inceptive 起来: they started chatting.', en: 'They started chatting the moment they met and went on for two hours.' },
+  { s: 'xiaqu', t: 'choice', q: '别停，你接着说__。', o: ['下去', '起来', '下来', '过去'], w: 'Continuing from now on: V下去.', en: 'Don\'t stop; keep going.' },
+  { s: 'xiaqu', t: 'choice', q: '学外语很难，但只要坚持__，一定会有进步。', o: ['下去', '起来', '出来', '过来'], w: 'Keep going into the future: 坚持下去.', en: 'Learning a language is hard, but if you keep at it you\'ll definitely improve.' },
+  { s: 'deliao', t: 'choice', q: '菜点得太多了，我们两个人吃__。', o: ['不了', '没了', '得了', '不起'], w: 'Too much to finish: 吃不了. 吃不起 means "can\'t afford".', en: 'We ordered too much; the two of us can\'t finish it.' },
+  { s: 'deliao', t: 'judge', o: ['明天的会我参加不了。', '明天的会我不参加得了。', '明天的会我没参加得了。'], w: 'The negation 不 goes between the verb and 了: 参加不了.', en: 'I can\'t make tomorrow\'s meeting.' },
+  { s: 'feibuke', t: 'choice', q: '这部电影太好看了，你__去看__。', o: ['非……不可', '不得不……不可', '非……不得', '只有……不可'], w: '非……不可 = absolutely must.', en: 'This film is so good, you absolutely have to see it.' },
+  { s: 'feibuke', t: 'choice', q: '我不让他去，他__要去。', o: ['非', '不得不', '只好', '才'], w: 'Insisting against resistance: 非要.', en: 'I told him not to go, but he insisted on going.' },
+  { s: 'budebu', t: 'choice', q: '末班车已经开走了，我们__打车回去。', o: ['不得不', '非', '宁可', '何况'], w: 'No choice: 不得不. 非 needs 不可/要, 宁可 needs a 也 clause.', en: 'The last bus has gone, so we have no choice but to take a taxi back.' },
+  { s: 'budebu', t: 'judge', o: ['因为生病，他不得不放弃了这次比赛。', '因为生病，他不得不没参加这次比赛。', '因为生病，不得不他放弃了这次比赛。'], w: '不得不 goes after the subject and takes an affirmative verb phrase.', en: 'Because he was ill, he had to drop out of the competition.' },
+  { s: 'nandao', t: 'choice', q: '__你连这么简单的问题都不会__？', o: ['难道……吗', '难道……呢', '何况……吗', '既然……吗'], w: 'Rhetorical disbelief: 难道……吗.', en: 'You mean you can\'t even do a question this simple?' },
+  { s: 'nandao', t: 'choice', q: '他已经道歉了，难道你还不原谅他__？', o: ['吗', '呢', '吧', '了'], w: '难道 pairs with 吗.', en: 'He\'s already apologised; surely you\'re going to forgive him?' },
+  { s: 'qwdou', t: 'judge', o: ['他今天不舒服，什么都不想吃。', '他今天不舒服，什么不都想吃。', '他今天不舒服，都什么不想吃。', '他今天不舒服，什么都想不吃。'], w: 'Order: question word → 都 → negation → verb.', en: 'He\'s not feeling well today and doesn\'t want to eat anything.' },
+  { s: 'qwdou', t: 'choice', q: '这件事__知道，你别再说了。', o: ['谁都', '都谁', '什么都', '哪儿都'], w: '谁都知道: everyone knows. The question word comes before 都.', en: 'Everyone already knows about it, so stop going on about it.' },
+  { s: 'shuishui', t: 'choice', q: '今天的饭__先到__请客。', o: ['谁……谁', '谁……他', '什么……什么', '哪儿……哪儿'], w: 'The second 谁 refers back to the first: 谁先到谁请客.', en: 'Whoever arrives first pays for dinner today.' },
+  { s: 'shuishui', t: 'choice', q: '你想吃__，我们就吃__。', o: ['什么……什么', '谁……谁', '哪儿……哪儿', '什么……这个'], w: 'Echoed question word: 想吃什么就吃什么.', en: 'We\'ll eat whatever you want.' },
+  { s: 'dongbudong', t: 'choice', q: '他脾气不好，__就发火。', o: ['动不动', '一直', '总是', '常常'], w: '动不动就 + reaction = at the slightest provocation.', en: 'He has a bad temper and flies off the handle at the slightest thing.' },
+
+  // ---- ordering (HSK 4 reading part 2 style) ----
+  { s: 'bujin', t: 'order', parts: ['他不仅学习好', '而且很愿意帮助别人', '所以大家都很喜欢他'], en: 'He not only does well at school but is also happy to help others, so everyone likes him.' },
+  { s: 'zhidaocai', t: 'order', parts: ['我一直以为他是北京人', '直到昨天聊天的时候', '我才知道他是上海人'], en: 'I always assumed he was from Beijing; only when we chatted yesterday did I learn he\'s from Shanghai.' },
+  { s: 'jishi', t: 'order', parts: ['即使明天下大雨', '比赛也会照常进行', '所以请大家准时到'], en: 'Even if it pours tomorrow, the match will go ahead, so please be on time.' },
+  { s: 'zhisuoyi', t: 'order', parts: ['他之所以能考上北大', '是因为他每天都学到很晚', '从来没有放弃过'], en: 'The reason he got into Peking University is that he studied late every day and never gave up.' },
+  { s: 'suizhe', t: 'order', parts: ['随着手机越来越普及', '人们的生活方式发生了很大变化', '比如很多人已经不带现金了'], en: 'As smartphones have spread, people\'s way of life has changed a lot; many people no longer carry cash, for example.' },
+  { s: 'jiran', t: 'order', parts: ['既然你已经决定去留学了', '就要早点儿准备', '比如先把语言考试考好'], en: 'Since you\'ve decided to study abroad, you should prepare early, for example by getting the language exam done first.' },
+  { s: 'liandou', t: 'order', parts: ['这道题太难了', '连我们老师都想了半天', '更不用说我们这些学生了'], en: 'This question is so hard that even our teacher had to think for ages, never mind us students.' },
+  { s: 'yuqi', t: 'order', parts: ['与其在家里生闷气', '不如出去走走', '说不定心情会好一些'], en: 'Rather than sulk at home, go out for a walk; you might feel better.' },
+  { s: 'wulun', t: 'order', parts: ['无论工作有多忙', '他每天都会给父母打个电话', '问问他们身体怎么样'], en: 'However busy work is, he calls his parents every day to ask how they are.' },
+  { s: 'yaobushi', t: 'order', parts: ['要不是你提醒我', '我早就把这件事忘了', '真是太谢谢你了'], en: 'If you hadn\'t reminded me I\'d have forgotten all about it; thank you so much.' },
+  { s: 'bushierer', t: 'order', parts: ['我不是不想帮你', '而是这件事我真的帮不上忙', '你还是去问问别人吧'], en: 'It\'s not that I don\'t want to help; I really can\'t help with this, so you\'d better ask someone else.' },
+  { s: 'yushi', t: 'order', parts: ['他在网上看到一个招聘广告', '觉得很适合自己', '于是马上发了简历'], en: 'He saw a job ad online, thought it suited him, and so sent his CV straight away.' },
+  { s: 'yijiu', t: 'order', parts: ['我弟弟特别喜欢踢足球', '一放学就跑到操场去', '常常天黑了才回家'], en: 'My little brother loves football; he runs to the pitch the moment school is out and often doesn\'t come home until dark.' },
+  { s: 'chufei', t: 'order', parts: ['这个问题很复杂', '除非请专家来看看', '否则我们自己很难解决'], en: 'This problem is complicated; unless we get an expert to look at it, we\'ll struggle to solve it ourselves.' },
+  { s: 'shenzhi', t: 'order', parts: ['他非常喜欢中国历史', '看了很多这方面的书', '甚至还专门去西安参观了兵马俑'], en: 'He loves Chinese history; he has read lots of books on it and even made a trip to Xi\'an to see the Terracotta Army.' },
+  { s: 'hekuang', t: 'order', parts: ['这么重的箱子', '连大人都搬不动', '何况是一个孩子呢'], en: 'A box this heavy, even an adult can\'t lift it, let alone a child.' },
+  { s: 'kejian', t: 'order', parts: ['这个问题全班只有一个人答对了', '可见大家对这部分内容还不太熟悉', '下节课我们再复习一下'], en: 'Only one person in the class got this right, which shows this part isn\'t familiar yet; we\'ll review it next lesson.' },
+  { s: 'zhiyaojiu', t: 'order', parts: ['这个软件用起来很简单', '只要按照说明一步一步做', '就不会有什么问题'], en: 'This software is easy to use; as long as you follow the instructions step by step, you won\'t have any problems.' },
+  { s: 'dengzai', t: 'order', parts: ['现在讨论这个问题还太早', '等调查结果出来以后', '我们再做决定吧'], en: 'It\'s too early to discuss this; let\'s decide once the results of the investigation are out.' },
+];
+
+// Writing prompts: a random constraint is added to each writing task so you don't repeat the same easy sentence.
+export const WRITE_CONSTRAINTS = [
+  'Use a different subject in each clause.',
+  'Describe something that happened to you this week.',
+  'Make it a negative sentence.',
+  'Write it as a question someone might ask you.',
+  'Write it about your studies or research.',
+  'Write it about a friend or family member.',
+  'Use it to give someone advice.',
+  'Set it in a place you know well.',
+  'Put a time expression (昨天, 以后, 每次 …) in the sentence.',
+  'Write two sentences that use different meanings of the structure.',
+];

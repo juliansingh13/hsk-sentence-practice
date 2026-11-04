@@ -11,7 +11,8 @@
   <header class="topbar">
     <div class="brand"><span class="seal">句</span><span class="brand-text">造句练习</span></div>
     <nav class="topnav">
-      <button id="nav-study" class="navbtn" type="button">Study</button>
+      <button id="nav-study" class="navbtn" type="button">Words</button>
+      <button id="nav-grammar" class="navbtn" type="button">Grammar</button>
       <button id="nav-settings" class="navbtn" type="button">Settings</button>
     </nav>
   </header>
@@ -91,6 +92,40 @@
 
         </div>
       </div>
+    </section>
+
+    <!-- GRAMMAR VIEW -->
+    <section id="view-grammar" hidden>
+      <div class="g-toolbar">
+        <div class="g-modes" id="g-modes" role="tablist"></div>
+        <div class="g-scope-row" id="g-scope-row">
+          <label class="g-scope-label">Practise
+            <select id="g-scope"></select>
+          </label>
+          <span class="g-score" id="g-score"></span>
+        </div>
+      </div>
+
+      <div id="g-practice">
+        <article class="g-card" id="g-stage"></article>
+        <div id="g-feedback"></div>
+        <div class="chat" id="g-chat" hidden>
+          <div class="label">Ask about this question</div>
+          <div class="chat-log" id="g-chat-log"></div>
+          <div class="chat-input-row">
+            <textarea id="g-chat-input" rows="2" placeholder="e.g. Why can’t I use 只要 here? Is 即使……还是 possible?"></textarea>
+            <button class="primary" id="g-chat-send" type="button">Ask</button>
+          </div>
+          <div class="status" id="g-chat-status" hidden></div>
+        </div>
+        <div class="g-foot">
+          <button class="ghost" id="g-generate" type="button">Generate new questions</button>
+          <span class="hint">Keys: 1–4 to answer · Enter for next</span>
+        </div>
+        <div class="status" id="g-gen-status" hidden></div>
+      </div>
+
+      <div id="g-ref" hidden></div>
     </section>
 
     <!-- SETTINGS VIEW -->
