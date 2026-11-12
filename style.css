@@ -116,6 +116,7 @@ main { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
 }
 .word-meaning { color: var(--ink-2); margin-top: 8px; white-space: pre-line; }
 .example-py { font-size: 14px; color: var(--accent); margin-top: 4px; white-space: pre-line; }
+.sentence-pinyin { color: var(--accent); font-size: 14px; margin: 3px 0 8px; white-space: pre-line; }
 .example-tr { font-size: 15px; color: var(--ink-2); margin-top: 4px; white-space: pre-line; }
 .example {
   margin-top: 20px; text-align: left; background: var(--surface-2); border-radius: 10px; padding: 12px 14px;

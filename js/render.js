@@ -1,5 +1,6 @@
 // Rendering shared by the vocabulary and grammar sections.
 import { escapeHtml, highlightHtml } from './highlight.js';
+import { chineseToPinyin } from './pinyin.js';
 
 const DEFAULT_LABELS = { target_word: 'Target word', grammar: 'Grammar', naturalness: 'Naturalness', notUsed: 'Word not used' };
 
@@ -29,6 +30,8 @@ export function renderResult(r, labels = {}) {
 
     html += `<div class="sentence" data-s="${si}">`;
     html += `<div class="sentence-head"><div class="sentence-text">${sentHtml}</div><div>${badge}</div></div>`;
+    const originalPinyin = chineseToPinyin(s.original);
+    if (originalPinyin) html += `<div class="sentence-pinyin">${escapeHtml(originalPinyin)}</div>`;
     if (errs.length) {
       html += '<ol class="errors">';
       errs.forEach((e, i) => {
@@ -45,8 +48,18 @@ export function renderResult(r, labels = {}) {
     const showNat = s.natural && s.natural !== s.corrected && s.natural !== s.original;
     if (showCorr || showNat) {
       html += '<div class="versions">';
-      if (showCorr) html += `<div><span class="vlabel">Corrected</span>${escapeHtml(s.corrected)}</div>`;
-      if (showNat) html += `<div><span class="vlabel">Natural</span>${escapeHtml(s.natural)}</div>`;
+      if (showCorr) {
+        html += `<div><span class="vlabel">Corrected</span>${escapeHtml(s.corrected)}`;
+        const correctedPinyin = chineseToPinyin(s.corrected);
+        if (correctedPinyin) html += `<div class="sentence-pinyin">${escapeHtml(correctedPinyin)}</div>`;
+        html += '</div>';
+      }
+      if (showNat) {
+        html += `<div><span class="vlabel">Natural</span>${escapeHtml(s.natural)}`;
+        const naturalPinyin = chineseToPinyin(s.natural);
+        if (naturalPinyin) html += `<div class="sentence-pinyin">${escapeHtml(naturalPinyin)}</div>`;
+        html += '</div>';
+      }
       html += '</div>';
     }
     html += '</div>';

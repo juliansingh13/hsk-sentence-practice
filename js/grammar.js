@@ -4,6 +4,7 @@ import { safeJson, normalizeCheck } from './prompts.js';
 import { renderResult, msgHtml } from './render.js';
 import { GROUPS, STRUCTURES, SEED_ITEMS, WRITE_CONSTRAINTS } from './grammar-data.js';
 import { grammarCheckMessages, grammarChatMessages, generateMessages, normalizeGenerated, splitOption, checkContext } from './grammar-prompts.js';
+import { toneNumbersToMarks } from './pinyin.js';
 
 const $ = (id) => document.getElementById(id);
 const BY_ID = Object.fromEntries(STRUCTURES.map(s => [s.id, s]));
@@ -236,25 +237,26 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
       const sent = escapeHtml(q.item.q).replace(/__/g, () => `<span class="g-blank">${blanks > 1 ? ++n : ''}</span>`);
       html += head(blanks > 1 ? 'Fill both blanks' : 'Fill the blank');
       html += `<div class="g-sentence">${sent}</div><div class="g-opts">`;
+      html += pyLine(q.item.q);
       q.order.forEach((oi, k) => {
         const parts = splitOption(q.item.o[oi]);
-        html += `<button type="button" class="g-opt" data-k="${k}"><span class="g-key">${'ABCDE'[k]}</span><span class="g-opt-text">${parts.map(escapeHtml).join('<span class="g-sep">……</span>')}</span></button>`;
+        html += `<button type="button" class="g-opt" data-k="${k}"><span class="g-key">${'ABCDE'[k]}</span><span class="g-opt-text">${parts.map(escapeHtml).join('<span class="g-sep">……</span>')}</span><span class="g-py" data-py="${escapeHtml(parts.join('……'))}"></span></button>`;
       });
       html += '</div>';
     } else if (q.mode === 'judge') {
       html += head(escapeHtml(q.item.p || 'Which sentence is correct?'));
       html += '<div class="g-opts g-opts-col">';
       q.order.forEach((oi, k) => {
-        html += `<button type="button" class="g-opt g-opt-sent" data-k="${k}"><span class="g-key">${'ABCDE'[k]}</span><span class="g-opt-text">${escapeHtml(q.item.o[oi])}</span></button>`;
+        html += `<button type="button" class="g-opt g-opt-sent" data-k="${k}"><span class="g-key">${'ABCDE'[k]}</span><span class="g-opt-text">${escapeHtml(q.item.o[oi])}</span><span class="g-py" data-py="${escapeHtml(q.item.o[oi])}"></span></button>`;
       });
       html += '</div>';
     } else if (q.mode === 'order') {
       html += head('Put the clauses in order');
-      html += `<div class="g-order-line" id="g-order-line">${q.placed.map((ti, k) => `<button type="button" class="g-tile placed" data-placed="${k}"><span class="g-key">${'ABC'[ti]}</span>${escapeHtml(q.item.parts[q.tiles[ti]])}</button>`).join('') || '<span class="g-order-hint">Tap the clauses below in the right order</span>'}</div>`;
+      html += `<div class="g-order-line" id="g-order-line">${q.placed.map((ti, k) => `<button type="button" class="g-tile placed" data-placed="${k}"><span class="g-key">${'ABC'[ti]}</span>${escapeHtml(q.item.parts[q.tiles[ti]])}<span class="g-py" data-py="${escapeHtml(q.item.parts[q.tiles[ti]])}"></span></button>`).join('') || '<span class="g-order-hint">Tap the clauses below in the right order</span>'}</div>`;
       html += '<div class="g-tiles">';
       q.tiles.forEach((pi, ti) => {
         const used = q.placed.includes(ti);
-        html += `<button type="button" class="g-tile${used ? ' used' : ''}" data-tile="${ti}" ${used ? 'disabled' : ''}><span class="g-key">${'ABC'[ti]}</span>${escapeHtml(q.item.parts[pi])}</button>`;
+        html += `<button type="button" class="g-tile${used ? ' used' : ''}" data-tile="${ti}" ${used ? 'disabled' : ''}><span class="g-key">${'ABC'[ti]}</span>${escapeHtml(q.item.parts[pi])}<span class="g-py" data-py="${escapeHtml(q.item.parts[pi])}"></span></button>`;
       });
       html += '</div>';
       html += `<div class="composer-actions"><button class="ghost" id="g-order-reset" type="button">Reset</button><button class="primary" id="g-order-check" type="button" ${q.placed.length === 3 ? '' : 'disabled'}>Check</button></div>`;
@@ -265,13 +267,14 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
       html += composer('翻译成中文……');
     } else if (q.mode === 'write') {
       const s = q.structure;
-      html += `<div class="g-write-card"><div class="g-write-p">${escapeHtml(s.p)}</div><div class="g-write-py">${escapeHtml(s.py)}</div>`;
+      html += `<div class="g-write-card"><div class="g-write-p">${escapeHtml(s.p)}</div><div class="g-write-py">${escapeHtml(toneNumbersToMarks(s.py))}</div>`;
       html += `<div class="g-write-task"><div><span class="label">Meaning</span>${escapeHtml(q.task.meaning)}</div><div><span class="label">Constraint</span>${escapeHtml(q.task.constraint)}</div>
         <div class="g-swap"><button class="linkbtn" id="g-new-constraint" type="button">Different constraint</button><button class="linkbtn" id="g-skip" type="button">Different structure</button></div></div>`;
       html += `<details class="g-note"><summary>Usage note</summary><p>${escapeHtml(s.note)}</p>${s.m.length > 1 ? `<p class="muted small">All meanings: ${s.m.map(escapeHtml).join(' · ')}</p>` : ''}</details></div>`;
       html += composer(`用「${s.p}」造一两个句子……`);
     }
     box.innerHTML = html;
+    fillPinyin(box);
 
     if (q.mode === 'translate' || q.mode === 'write') {
       const ta = $('g-input');
@@ -578,12 +581,12 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
           <summary><input type="checkbox" class="g-active" data-id="${s.id}" ${isActive(s.id) ? 'checked' : ''} title="Include in practice">
           <span class="g-ref-p">${escapeHtml(s.p)}${s.lvl >= 5 ? '<sup>⁵</sup>' : ''}</span><span class="g-ref-m">${escapeHtml(s.m[0])}</span>${boxMeter(s.id)}</summary>
           <div class="g-ref-body">
-            <div class="g-ref-py">${escapeHtml(s.py)}</div>
+            <div class="g-ref-py">${escapeHtml(toneNumbersToMarks(s.py))}</div>
             <div>${s.m.map((x, i) => `<div>${s.m.length > 1 ? `(${i + 1}) ` : ''}${escapeHtml(x)}</div>`).join('')}</div>
             <p class="g-ref-note">${escapeHtml(s.note)}</p>
             ${s.cf.length ? `<div class="g-ref-cf"><span class="label">Don’t confuse with</span>${s.cf.map(id => structureTag(BY_ID[id])).join(' ')}</div>` : ''}
             ${examples.length ? `<div class="label">Examples</div>${examples.map(e => `<div class="g-ex"><div class="g-ex-zh">${escapeHtml(e)}</div>${open.has(s.id) ? `<div class="g-py" data-py="${escapeHtml(e)}"></div>` : `<div class="g-py" data-py-lazy="${escapeHtml(e)}"></div>`}</div>`).join('')}` : ''}
-            ${writes.length ? `<div class="label">Your recent sentences</div>${writes.map(e => `<div class="g-ex"><span class="badge ${e.ok ? 'ok' : 'bad'}">${e.ok ? '✓' : '✗'}</span> ${escapeHtml(e.text)}</div>`).join('')}` : ''}
+            ${writes.length ? `<div class="label">Your recent sentences</div>${writes.map(e => `<div class="g-ex"><span class="badge ${e.ok ? 'ok' : 'bad'}">${e.ok ? '✓' : '✗'}</span> ${escapeHtml(e.text)}${pyLine(e.text)}</div>`).join('')}` : ''}
             <div class="row g-ref-btns"><button class="primary" type="button" data-practise="${s.id}">Practise</button><button class="ghost" type="button" data-write="${s.id}">Write sentences</button></div>
           </div></details>`;
       }
