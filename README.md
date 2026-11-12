@@ -10,7 +10,9 @@ Each sentence also gets a minimally corrected version and a natural rewrite.
 
 ## Grammar section
 
-The **Grammar** tab drills 53 HSK 3–5 connectors and sentence patterns (只要……就, 既然……就, 与其……不如, 是……的, V下去 …). It works without a vocabulary list.
+The **Grammar** tab contains a comprehensive HSK 1–6 reference catalogue, filterable by level while retaining topic groups. Its hand-written question bank drills the original intermediate connectors and sentence patterns (只要……就, 既然……就, 与其……不如, 是……的, V下去 …); every catalogue entry also supports writing practice and AI-generated questions. It works without a vocabulary list.
+
+Level assignments follow the [official HSK syllabus released in November 2025](https://hsk.cn-bj.ufileos.com/3.0/%E6%96%B0%E7%89%88HSK%E8%80%83%E8%AF%95%E5%A4%A7%E7%BA%B21219.pdf), effective July 2026. The catalogue was cross-checked against [WordSwing's syllabus-based HSK grammar index](https://hsk.wordswing.com/grammar/).
 
 - **Fill in (选择)**: a sentence with one or two blanks and four options. The wrong options are confusable structures or mismatched pairs (只有……就), and the target structure is not named, so you have to work out the logic.
 - **Spot it (判断)**: pick the one correct sentence out of 3–4. The others contain typical learner errors (就 before the subject, 并 in the wrong place, a missing 都), or the question asks which sentence has a given meaning.

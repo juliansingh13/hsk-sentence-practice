@@ -80,6 +80,10 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
   const mode = () => prefs().mode || 'mix';
   const scope = () => prefs().scope || 'all';
   const isActive = (id) => G().active[id] !== false;
+  const selectedLevels = () => {
+    const saved = prefs().levels;
+    return new Set(Array.isArray(saved) && saved.length ? saved.map(Number) : [1, 2, 3, 4, 5, 6]);
+  };
 
   const session = { right: 0, total: 0, seenItems: new Set(), lastStructure: null };
   let current = null; // { item?, structure, mode, answered, correct, chat:[], task?, entry? }
@@ -98,8 +102,9 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
 
   function scopeStructures() {
     const sc = scope();
-    if (BY_ID[sc]) return [BY_ID[sc]];
-    let list = STRUCTURES.filter(s => isActive(s.id));
+    const levels = selectedLevels();
+    if (BY_ID[sc]) return levels.has(BY_ID[sc].lvl) ? [BY_ID[sc]] : [];
+    let list = STRUCTURES.filter(s => isActive(s.id) && levels.has(s.lvl));
     if (sc.startsWith('group:')) list = list.filter(s => s.g === sc.slice(6));
     if (sc === 'due') {
       const now = Date.now();
@@ -150,9 +155,17 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
       current = { mode: 'write', structure: s, task: { mode: 'write', meaning: pick(s.m), constraint: pick(WRITE_CONSTRAINTS) }, chat: [] };
     } else {
       const by = candidatesFor(m);
-      const ids = Object.keys(by);
+      const ids = scopeStructures().map(s => s.id);
       if (!ids.length) { current = null; return; }
       const sid = chooseStructure(ids);
+      if (!by[sid]?.length) {
+        // The full catalogue is larger than the hand-written question bank. Keep
+        // every selected structure in rotation with a composition prompt.
+        const s = BY_ID[sid];
+        current = { mode: 'write', structure: s, task: { mode: 'write', meaning: pick(s.m), constraint: pick(WRITE_CONSTRAINTS) }, chat: [], fallback: true };
+        session.lastStructure = current.structure.id;
+        return;
+      }
       const item = chooseItem(by[sid]);
       const q = { mode: m === 'mix' ? item.t : m, structure: BY_ID[sid], item, chat: [] };
       if (item.o) q.order = shuffle(item.o.map((_, i) => i));
@@ -195,16 +208,22 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
     $('g-modes').innerHTML = MODES.map(([k, zh, en]) =>
       `<button type="button" class="g-mode${mode() === k ? ' active' : ''}" data-mode="${k}"><span class="zh">${zh}</span><span class="en">${en}</span></button>`).join('');
     const sel = $('g-scope');
-    const activeCount = STRUCTURES.filter(s => isActive(s.id)).length;
+    const selected = selectedLevels();
+    const activeCount = STRUCTURES.filter(s => isActive(s.id) && selected.has(s.lvl)).length;
     const now = Date.now();
-    const dueCount = STRUCTURES.filter(s => isActive(s.id) && G().stats[s.id] && G().stats[s.id].due <= now).length;
+    const dueCount = STRUCTURES.filter(s => isActive(s.id) && selected.has(s.lvl) && G().stats[s.id] && G().stats[s.id].due <= now).length;
     let html = `<option value="all">All my structures (${activeCount})</option><option value="due">Due for review (${dueCount})</option><optgroup label="By group">`;
     html += Object.entries(GROUPS).map(([k, v]) => `<option value="group:${k}">${escapeHtml(v)}</option>`).join('') + '</optgroup>';
     for (const [k, v] of Object.entries(GROUPS)) {
-      html += `<optgroup label="${escapeHtml(v)}">` + STRUCTURES.filter(s => s.g === k).map(s => `<option value="${s.id}">${escapeHtml(s.p)}</option>`).join('') + '</optgroup>';
+      const matching = STRUCTURES.filter(s => s.g === k && selected.has(s.lvl));
+      if (matching.length) html += `<optgroup label="${escapeHtml(v)}">` + matching.map(s => `<option value="${s.id}">${escapeHtml(s.p)} · HSK ${s.lvl}</option>`).join('') + '</optgroup>';
     }
     sel.innerHTML = html;
     sel.value = scope();
+    const levels = selectedLevels();
+    $('g-levels').innerHTML = [1, 2, 3, 4, 5, 6].map(n =>
+      `<label class="g-level-chip"><input type="checkbox" value="${n}" ${levels.has(n) ? 'checked' : ''}><span>HSK ${n}</span></label>`
+    ).join('');
     $('g-score').textContent = session.total ? `This session: ${session.right}/${session.total} correct` : '';
     const genOk = ['mix', 'choice', 'judge', 'order', 'translate'].includes(mode());
     $('g-generate').hidden = !genOk;
@@ -569,17 +588,20 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
   function renderRef() {
     const box = $('g-ref');
     const open = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.id));
-    let html = `<p class="muted">Untick structures you haven’t learned yet; they’ll still appear as wrong options, which is part of the point. ⁵ marks structures that are more typical of HSK 5.</p>
+    const levels = selectedLevels();
+    let html = `<p class="muted">Filtered by the HSK level chips above and organised by topic. Untick structures you haven’t learned yet; they can still appear as wrong options.</p>
       <div class="row g-ref-actions"><button class="ghost" type="button" id="g-all-on">Select all</button><button class="ghost" type="button" id="g-all-off">Select none</button></div>`;
     for (const [gk, gname] of Object.entries(GROUPS)) {
+      const groupStructures = STRUCTURES.filter(x => x.g === gk && levels.has(x.lvl));
+      if (!groupStructures.length) continue;
       html += `<h3 class="g-group">${escapeHtml(gname)}</h3>`;
-      for (const s of STRUCTURES.filter(x => x.g === gk)) {
+      for (const s of groupStructures) {
         const items = allItems().filter(it => it.s === s.id && it.t !== 'translate');
         const examples = [...new Set(items.map(correctSentence))].slice(0, 4);
         const writes = G().log.filter(e => e.s === s.id).slice(-4).reverse();
         html += `<details class="g-ref-item" data-id="${s.id}" ${open.has(s.id) ? 'open' : ''}>
           <summary><input type="checkbox" class="g-active" data-id="${s.id}" ${isActive(s.id) ? 'checked' : ''} title="Include in practice">
-          <span class="g-ref-p">${escapeHtml(s.p)}${s.lvl >= 5 ? '<sup>⁵</sup>' : ''}</span><span class="g-ref-m">${escapeHtml(s.m[0])}</span>${boxMeter(s.id)}</summary>
+          <span class="g-ref-p">${escapeHtml(s.p)}<sup>HSK ${s.lvl}</sup></span><span class="g-ref-m">${escapeHtml(s.m[0])}</span>${boxMeter(s.id)}</summary>
           <div class="g-ref-body">
             <div class="g-ref-py">${escapeHtml(toneNumbersToMarks(s.py))}</div>
             <div>${s.m.map((x, i) => `<div>${s.m.length > 1 ? `(${i + 1}) ` : ''}${escapeHtml(x)}</div>`).join('')}</div>
@@ -651,6 +673,22 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
   });
   view.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.closest('#g-levels')) {
+      const inputs = [...$('g-levels').querySelectorAll('input')];
+      let checked = inputs.filter(x => x.checked).map(x => Number(x.value));
+      // With every level initially active, the first click means “show only this
+      // level”, rather than the surprising “show every level except this one”.
+      if (!t.checked && checked.length === 5) {
+        inputs.forEach(x => { x.checked = x === t; });
+        checked = [Number(t.value)];
+      }
+      // Keep at least one level selected so practice never enters a confusing empty state.
+      if (!checked.length) { t.checked = true; return; }
+      prefs().levels = checked;
+      if (BY_ID[scope()] && !checked.includes(BY_ID[scope()].lvl)) prefs().scope = 'all';
+      save(); current = null; render();
+      return;
+    }
     if (t.classList.contains('g-active')) {
       if (t.checked) delete G().active[t.dataset.id]; else G().active[t.dataset.id] = false;
       save(); renderToolbar();

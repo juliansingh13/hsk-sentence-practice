@@ -1,4 +1,5 @@
-// Built-in grammar structures (HSK 3–5) and a hand-written question bank.
+// Built-in grammar structures and a hand-written question bank.
+// Levels follow the HSK syllabus released in November 2025 (effective July 2026).
 //
 // Structure: { id, p: pattern, py: pinyin, g: group, lvl, m: [meanings], note, cf: [confusable ids] }
 // Item types (in the seed bank the correct option is always first; the UI shuffles):
@@ -7,6 +8,10 @@
 //   order:  { s, t:'order', parts: clauses in the correct order (joined with "，", ending "。"), w?, en }
 
 export const GROUPS = {
+  basic: 'Basic sentences and word order',
+  question: 'Questions and particles',
+  modify: 'Modification and description',
+  quantity: 'Numbers, measure words and quantity',
   time: 'Time and sequence',
   cond: 'Condition',
   conc: 'Concession and contrast',
@@ -18,7 +23,7 @@ export const GROUPS = {
   pat: 'Sentence patterns and complements',
 };
 
-export const STRUCTURES = [
+const LEGACY_STRUCTURES = [
   // time
   { id: 'yijiu', p: '一……就……', py: 'yī……jiù……', g: 'time', lvl: 3, m: ['as soon as', 'whenever (habit)', 'it only takes … to …'], note: '就 stands after the subject of the second clause. 一 is yí before a 4th tone, yì before the others.', cf: ['gangjiu', 'zhiyaojiu'] },
   { id: 'gangjiu', p: '刚……就……', py: 'gāng……jiù……', g: 'time', lvl: 4, m: ['had only just … when …'], note: '刚 is an adverb right before the verb. 刚才 is a time word ("a moment ago") and does not form this pattern.', cf: ['yijiu'] },
@@ -82,6 +87,123 @@ export const STRUCTURES = [
   { id: 'shuishui', p: '谁……谁…… (疑问词 echo)', py: 'shéi……shéi……', g: 'pat', lvl: 4, m: ['whoever …, (that person) …', 'whatever …, (that) …'], note: 'The same question word repeats in both clauses (谁先到谁买票, 你想吃什么我们就吃什么).', cf: ['qwdou'] },
   { id: 'dongbudong', p: '动不动就……', py: 'dòngbudòng jiù……', g: 'pat', lvl: 5, m: ['at the slightest thing (a bad habit)'], note: 'Critical tone; always with 就.', cf: ['yijiu'] },
 ];
+
+// The original question bank focused on intermediate connectors.  The catalogue below
+// fills its beginner and advanced gaps.  Entries without seed questions can still be
+// practised in Write mode and can receive generated questions.
+const CATALOGUE_ADDITIONS = [
+  // HSK 1
+  ['shi','是','shì','basic',1,'link two nouns: A is B','Do not use 是 before a plain adjective.'],
+  ['youmeiyou','有 / 没有','yǒu / méiyǒu','basic',1,'have; there is / is not','The negative of 有 is 没有, never 不有.'],
+  ['bu-negation','不 + V/Adj','bù','basic',1,'not; do not','Use 不 for habits, states, wishes, and future actions.'],
+  ['mei-negation','没（有）+ V','méi(yǒu)','basic',1,'did not; have not','Use 没 for an action that did not happen; completed-action 了 normally disappears.'],
+  ['ma-question','……吗？','ma','question',1,'yes/no question','Add 吗 to a statement; do not also use an A-not-A form.'],
+  ['ne-particle','……呢？','ne','question',1,'what about; ongoing situation','呢 can return a question or highlight an action in progress.'],
+  ['question-words','什么 / 谁 / 哪儿 / 几 / 多少 / 怎么','shénme / shéi / nǎr / jǐ / duōshao / zěnme','question',1,'who, what, where, how many, how','A question word stays in the same position as its answer.'],
+  ['zenmeyang','……怎么样？','zěnmeyàng','question',1,'how is it; how about','Used to ask for an opinion or propose an option.'],
+  ['a-not-a','V不V / Adj不Adj','V bù V','question',1,'affirmative-negative question','Do not add 吗 to an A-not-A question.'],
+  ['de-modifier','modifier + 的 + noun','de','modify',1,'possession; noun modification','Short, close adjective-noun combinations may omit 的.'],
+  ['le-complete','V + 了','le','time',1,'completed action','Verb-final 了 marks completion, not simply past tense.'],
+  ['le-change','clause + 了','le','time',1,'new situation or change of state','Sentence-final 了 says that the situation is now different.'],
+  ['zai-location','在 + place (+ V)','zài','frame',1,'be at; do something at a place','A location phrase normally comes before the verb.'],
+  ['progressive','在 / 正在 + V (+ 呢)','zài / zhèngzài','time',1,'action in progress','Do not normally use this frame with stative verbs.'],
+  ['hen-adjective','很 + Adj','hěn','modify',1,'plain adjective predicate; very','很 often links a subject to an adjective without strong emphasis.'],
+  ['tai-le','太 + Adj + 了','tài…le','modify',1,'too; so very','The final 了 belongs to this exclamatory pattern.'],
+  ['dou-ye','都 / 也 + predicate','dōu / yě','frame',1,'all; also','Both adverbs stand after the subject and before the predicate.'],
+  ['he-nouns','N + 和 + N','hé','add',1,'and; with','和 normally joins nouns, not two independent clauses.'],
+  ['modal-can','会 / 能 / 可以 + V','huì / néng / kěyǐ','pat',1,'learned ability; capability; permission','Choose the modal according to skill, circumstances, or permission.'],
+  ['xiang-yao','想 / 要 + V','xiǎng / yào','pat',1,'would like; want or intend','不想 is normally used for “do not want to”.'],
+  ['basic-measures','number + 个 / 本 / 口 / 块 / 件 / 只 + noun','gè / běn / kǒu / kuài / jiàn / zhī','quantity',1,'basic measure words','A numeral or 这/那 normally needs a measure word before a noun.'],
+  ['liang-er','两 / 二','liǎng / èr','quantity',1,'two','Use 两 before most measure words; 二 in counting, dates, and compound numbers.'],
+  ['time-position','subject + time + predicate','shíjiāncí','time',1,'position of time words','Time comes before the verb, either before or after the subject.'],
+  ['dates-times','年 / 月 / 号 / 星期 / 点 / 分','nián / yuè / hào / xīngqī / diǎn / fēn','time',1,'dates and clock time','Chinese orders dates and times from larger units to smaller ones.'],
+  ['location-words','N + 上 / 下 / 里 / 外 / 前 / 后','shàng / xià / lǐ / wài / qián / hòu','frame',1,'relative location','The location word follows its reference noun.'],
+  ['go-do','去 / 来 + place + V','qù / lái','pat',1,'go or come somewhere to do something','The purpose action follows the destination.'],
+  ['gei','给 + person + noun / V','gěi','pat',1,'give; do for someone','给 can introduce a recipient or beneficiary.'],
+  ['ba-particle','……吧','ba','question',1,'suggestion; softened confirmation','吧 softens a suggestion or checks an assumption.'],
+  ['you-dian','有点儿 + Adj / Adj + 一点儿','yǒudiǎnr / yìdiǎnr','modify',1,'a little','有点儿 often implies an unwelcome degree; 一点儿 follows the adjective.'],
+
+  // HSK 2
+  ['bi','A 比 B + Adj','bǐ','comp',2,'A is more … than B','Do not put 很 directly before the adjective in a basic 比 comparison.'],
+  ['meiyou-compare','A 没有 B + Adj','méiyǒu','comp',2,'A is not as … as B','The compared standard follows 没有.'],
+  ['de-complement','V + 得 + description','de','pat',2,'how well an action is done','With an object, the verb is often repeated before 得.'],
+  ['three-de','的 / 得 / 地','de / de / de','modify',2,'noun modifier; complement; adverbial modifier','的 precedes nouns, 得 follows verbs, and 地 precedes verbs.'],
+  ['guo','V + 过','guo','time',2,'past experience','Negate with 没 + V + 过.'],
+  ['zhe','V + 着','zhe','time',2,'continuing state','着 describes a state continuing after an action or alongside another action.'],
+  ['direction-simple','V + 来 / 去','lái / qù','pat',2,'movement toward or away from the speaker','来 points toward the reference point; 去 points away.'],
+  ['direction-compound','V + 出来 / 进去 / 回来 / 过去','chūlai / jìnqu / huílai / guòqu','pat',2,'compound direction','Put the object according to whether it is a place or an ordinary object.'],
+  ['result-basic','V + 完 / 懂 / 错 / 好 / 会','wán / dǒng / cuò / hǎo / huì','pat',2,'result complement','The complement states the result actually reached.'],
+  ['haishi','A 还是 B？','háishi','choice',2,'A or B in a question; had better','Use 或者 for “or” in a statement.'],
+  ['yinwei-suoyi','因为……所以……','yīnwèi…suǒyǐ…','cause',2,'because … therefore','Chinese permits both markers in the same sentence.'],
+  ['suiran-danshi','虽然……但是/可是……','suīrán…dànshì/kěshì…','conc',2,'although … but','The second marker is normal in Chinese even when English omits “but”.'],
+  ['bie','别 / 不要 + V','bié / búyào','pat',2,'do not; stop','别…了 asks someone to stop an action already under way.'],
+  ['about-to','快要 / 要……了','kuàiyào / yào…le','time',2,'be about to','Do not normally use 快要 with a precise future time.'],
+  ['yijing-le','已经……了','yǐjīng…le','time',2,'already','了 commonly closes the completed or newly relevant situation.'],
+  ['reduplication','AA / A一A / AABB','chóngdié','pat',2,'brief or softened action; vivid quality','Verb reduplication suggests a short, light action.'],
+  ['duration','V + 了 + duration','shíliàng bǔyǔ','time',2,'duration complement','A continuing action may take another 了 at sentence end.'],
+  ['from-to','从 / 到 / 往 / 离 + place','cóng / dào / wǎng / lí','frame',2,'from, to, toward, distance from','These prepositions stand before their place phrase.'],
+  ['frequency-ci','V + number + 次','cì','quantity',2,'number of times','次 follows the verb; with 过 it normally precedes the object.'],
+  ['mei-dou','每……都……','měi…dōu…','frame',2,'every','每 phrase sets the range; 都 stands before the predicate.'],
+  ['approx-number','几 / 多 + measure expression','jǐ / duō','quantity',2,'approximate number','Word order changes between 十多个 and 一个多小时.'],
+
+  // HSK 3
+  ['ba-construction','把 + object + V + result','bǎ','pat',3,'dispose of or affect a definite object','The verb cannot normally stand bare; show a result, direction, amount, or location.'],
+  ['yuelaiyue','越来越 + Adj/V','yuèláiyuè','comp',3,'more and more','Use 越来越 for one changing situation and 越…越… for correlated change.'],
+  ['ruguo','如果……就…… / ……的话','rúguǒ…jiù… / dehuà','cond',3,'if … then','的话 closes the condition; 就 commonly introduces its result.'],
+  ['chule','除了……以外，还/也/都……','chúle…yǐwài…','add',3,'besides; except','还/也 adds another member; 都 excludes the named exception.'],
+  ['yibian','一边……一边……','yìbiān…yìbiān…','time',3,'do two things at once','The two actions normally share a subject and overlap in time.'],
+  ['youyou','又……又……','yòu…yòu…','add',3,'both … and','Links simultaneous qualities or actions.'],
+  ['xianzai','先……再/然后……','xiān…zài/ránhòu…','time',3,'first … then','再 is used for the later action in a planned sequence.'],
+  ['weile','为了 + purpose','wèile','cause',3,'in order to; for the sake of','The purpose phrase usually comes before the action taken.'],
+  ['potential','V + 得/不 + result','de / bù','pat',3,'can or cannot achieve a result','This expresses possibility, not permission.'],
+  ['result-extended','V + 到 / 住 / 走 / 上','dào / zhù / zǒu / shàng','pat',3,'extended result complements','Each complement contributes a concrete or figurative result.'],
+  ['you-zai','又 / 再 + V','yòu / zài','time',3,'again','又 usually refers to a repeated event already realized; 再 to one not yet realized.'],
+  ['gen-yiyang','A 跟/和 B 一样 (+ Adj)','gēn/hé…yíyàng','comp',3,'the same as; as … as','Add 不 before 一样 to say “different”.'],
+  ['extreme-degree','Adj + 极了 / 得很','jíle / dehěn','modify',3,'extremely','These complements follow the adjective, unlike 很.'],
+  ['not-at-all','一点儿也不 / 一……也没','yìdiǎnr yě bù / yí…yě méi','conc',3,'not at all; not a single','The negative follows 也/都.'],
+  ['modal-duty','应该 / 得 / 必须 + V','yīnggāi / děi / bìxū','pat',3,'should; have to; must','不用, not 不得, is the usual negative of spoken 得.'],
+  ['seems','好像 / 看起来……','hǎoxiàng / kànqǐlái','frame',3,'seem; look as if','看起来 is based on appearance; 好像 marks a tentative impression.'],
+  ['huozhe','A 或者 B','huòzhě','choice',3,'A or B in a statement','Use 还是 rather than 或者 in an alternative question.'],
+  ['bushima','不是……吗？','búshì…ma','question',3,'isn’t it; rhetorical reminder','The speaker expects agreement or expresses surprise.'],
+  ['existential','place + V着/了 + indefinite noun','cúnxiànjù','basic',3,'something exists, appears, or disappears','Start with the place and introduce the new, indefinite entity last.'],
+
+  // HSK 4–6 additions absent from the original connector-focused bank
+  ['sequence-discourse','首先……其次……最后……','shǒuxiān…qícì…zuìhòu…','time',4,'firstly, secondly, finally','Useful for ordered explanations and arguments.'],
+  ['fouze','……，否则……','fǒuzé','cond',4,'otherwise','The first clause gives what must happen to avoid the second.'],
+  ['adverbs-hsk4','千万 / 只好 / 确实 / 恐怕','qiānwàn / zhǐhǎo / quèshí / kǒngpà','frame',4,'strong warning; no choice; indeed; probably','These adverbs express the speaker’s stance before the predicate.'],
+  ['chadian','差（一）点儿……','chà(yì)diǎnr','frame',4,'nearly; almost','Context determines whether the narrowly avoided result was wanted.'],
+  ['fractions','百分之 / 分之 / 倍 / 左右','bǎifēnzhī / fēnzhī / bèi / zuǒyòu','quantity',4,'percentages, fractions, multiples, approximation','In fractions the denominator comes before 分之 and the numerator after it.'],
+  ['yidan','一旦……就……','yídàn…jiù…','cond',5,'once; if ever','一旦 presents a condition whose result is hard to reverse.'],
+  ['conclusion-connectors','从而 / 总之','cóng’ér / zǒngzhī','cause',5,'thereby; in short','从而 gives a resulting development; 总之 summarizes.'],
+  ['attitude-hsk5','毕竟 / 反正 / 简直 / 居然','bìjìng / fǎnzhèng / jiǎnzhí / jūrán','frame',5,'after all; anyway; simply; unexpectedly','Choose according to stance rather than treating them as neutral connectors.'],
+  ['simile-hsk5','似乎 / 仿佛 / 像……似的','sìhū / fǎngfú / xiàng…shìde','comp',5,'seem; as if; like','似乎 is tentative, 仿佛 and 像…似的 form comparisons.'],
+  ['time-hsk5','曾经 / 始终 / 早已 / 即将','céngjīng / shǐzhōng / zǎoyǐ / jíjiāng','time',5,'once; throughout; long since; soon','These usually precede the verb; 曾经 often pairs with 过.'],
+  ['fixed-potential','舍不得 / 来不及 / 用不着 / 不得了','shěbude / láibují / yòngbuzháo / bùdéliǎo','pat',5,'fixed potential expressions','Learn these as lexicalized complement patterns.'],
+  ['purpose-formal','为的是…… / 以便……','wèideshì / yǐbiàn','cause',5,'for the purpose of; so that','Formal purpose markers, common in explanations and writing.'],
+  ['basis-formal','凭 / 据 / 依据……','píng / jù / yījù','frame',5,'on the basis of; according to','据说 is impersonal “it is said”; 依据 introduces a formal basis.'],
+  ['formal-and','以及 / 并且 / 同时','yǐjí / bìngqiě / tóngshí','add',5,'and; furthermore; at the same time','以及 joins list items; 并且 and 同时 commonly join clauses.'],
+  ['fanshi','凡是……都……','fánshì…dōu…','cond',6,'all that; whenever','凡是 defines an entire class and normally pairs with 都.'],
+  ['jiusuan','就算……也……','jiùsuàn…yě…','conc',6,'even if','Introduces a hypothetical concession, including extreme cases.'],
+  ['zhi-yu','至于……','zhìyú','frame',6,'as for; concerning','Introduces a related topic after the main point has been established.'],
+  ['suo-nominal','所 + V (+ 的)','suǒ','modify',6,'that which is; passive-formal nominalizer','所 makes a verb phrase modify or stand for the affected thing.'],
+  ['wei-suo','为……所……','wéi…suǒ…','pat',6,'formal passive','A written passive: receiver + 为 + agent + 所 + verb.'],
+  ['yu-formal','于 + time/place/target/comparison','yú','frame',6,'at; in; to; than (formal)','于 is a compact written preposition whose meaning depends on its complement.'],
+  ['stance-hsk6','干脆 / 总算 / 明明 / 倒是 / 未必','gāncuì / zǒngsuàn / míngmíng / dàoshì / wèibì','frame',6,'simply; finally; obviously; actually; not necessarily','These adverbs encode evaluation or contrast and precede the predicate.'],
+  ['time-hsk6','一向 / 依旧 / 一时 / 一再','yíxiàng / yījiù / yìshí / yízài','time',6,'all along; still; for a while; repeatedly','Distinguish continuing state, temporary state, and repeated events.'],
+  ['buliao','不料……','búliào','conc',6,'unexpectedly','A written narrative connector introducing an unforeseen outcome.'],
+];
+
+const CURRENT_LEVEL_OVERRIDES = {
+  yijiu: 2, shide: 2,
+  yueyue: 3, zhiyaojiu: 3, zhiyoucai: 3, bujin: 3, passive: 3, qilai: 3, xiaqu: 3,
+  chufei: 6, zhisuoyi: 6, yaome: 6, yuqi: 6, yiwei: 6,
+};
+const currentLegacy = LEGACY_STRUCTURES.map(s => ({ ...s, lvl: CURRENT_LEVEL_OVERRIDES[s.id] || s.lvl }));
+const additions = CATALOGUE_ADDITIONS.map(([id, p, py, g, lvl, meaning, note]) => ({
+  id, p, py, g, lvl, m: [meaning], note, cf: [],
+}));
+
+export const STRUCTURES = [...currentLegacy, ...additions];
 
 export const SEED_ITEMS = [
   // ---- time ----
