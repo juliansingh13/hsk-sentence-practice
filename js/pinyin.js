@@ -24,6 +24,16 @@ export function toneNumbersToMarks(value) {
   return String(value || '').replace(/([a-züv:]+)([1-5])/gi, (_, syllable, tone) => markSyllable(syllable, tone));
 }
 
+// Join syllables into a word, with an apostrophe before a, e, o that start a later syllable: Xī'ān.
+export function joinPinyin(syllables) {
+  let out = '';
+  for (const s of syllables) {
+    if (out && /^[aeoāáǎàēéěèōóǒò]/i.test(s) && /\p{L}$/u.test(out)) out += "'";
+    out += s;
+  }
+  return out;
+}
+
 export function chineseToPinyin(value) {
   const text = String(value || '');
   if (!text || !/[\u3400-\u9fff]/.test(text)) return '';

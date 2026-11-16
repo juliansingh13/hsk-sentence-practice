@@ -508,3 +508,28 @@ label.check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
   .brand-text { display: none; }
   .navbtn { padding: 6px 10px; }
 }
+
+/* ---------- hover dictionary ---------- */
+.hd-popup {
+  position: fixed; z-index: 100; left: 0; top: 0;
+  width: max-content; min-width: 140px; max-width: min(320px, calc(100vw - 16px));
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+  font-family: var(--font-ui); font-size: 14px; line-height: 1.4;
+  pointer-events: none; overflow-wrap: anywhere;
+}
+.hd-word { font-family: var(--font-cjk); font-size: 28px; line-height: 1.2; }
+.hd-pinyin { color: var(--accent); font-weight: 600; margin-top: 2px; }
+.hd-gloss { color: var(--ink-2); }
+.hd-reading + .hd-reading { margin-top: 6px; }
+.hd-muted { color: var(--ink-3); margin-top: 2px; }
+.hd-deck {
+  display: inline-block; margin-top: 6px; padding: 1px 8px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--ink); font-size: 12px; font-weight: 600;
+}
+.hd-char { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+.hd-char-hanzi { font-family: var(--font-cjk); font-size: 17px; color: var(--ink); margin-right: 6px; }
+.hd-char-pinyin { color: var(--accent); margin-right: 6px; }
+.credit { margin: 28px 0 8px; font-size: 12px; color: var(--ink-3); text-align: center; }
+.credit a { color: inherit; }
