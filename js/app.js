@@ -3,6 +3,7 @@ import { escapeHtml } from './highlight.js';
 import { checkMessages, chatMessages, normalizeCheck, callDeepSeek, safeJson } from './prompts.js';
 import { renderResult, msgHtml } from './render.js';
 import { initGrammar } from './grammar.js';
+import { chineseToPinyin, toneNumbersToMarks } from './pinyin.js';
 
 const STORE_KEY = 'hskw.v1';
 const $ = (id) => document.getElementById(id);
@@ -108,15 +109,16 @@ function renderStudy() {
   const wi = idx[p.wordPos];
   const w = words()[wi];
   $('w-hanzi').textContent = w.hanzi;
-  $('w-pinyin').textContent = w.pinyin;
+  $('w-pinyin').textContent = toneNumbersToMarks(w.pinyin);
   $('w-meaning').textContent = w.meaning;
   $('w-meaning').hidden = true;
   $('w-meaning-toggle').hidden = !w.meaning;
   $('w-meaning-toggle').textContent = 'Show meaning';
   $('w-example-wrap').hidden = !w.example;
-  $('w-example').textContent = w.example;
-  $('w-example-py').textContent = w.examplePinyin || '';
-  $('w-example-py').hidden = !w.examplePinyin;
+  $('w-example').textContent = toneNumbersToMarks(w.example);
+  const examplePinyin = w.examplePinyin ? toneNumbersToMarks(w.examplePinyin) : chineseToPinyin(w.example);
+  $('w-example-py').textContent = examplePinyin;
+  $('w-example-py').hidden = !examplePinyin;
   $('w-example-tr').textContent = w.exampleTranslation || '';
   $('w-example-tr').hidden = !w.exampleTranslation;
   $('input-text').placeholder = `用「${w.hanzi}」造几个句子……`;
@@ -343,7 +345,7 @@ function renderSearch() {
     const w = words()[i];
     return `<button type="button" class="search-hit" data-i="${i}">`
       + `<span class="sh-hanzi">${escapeHtml(w.hanzi)}</span>`
-      + `<span class="sh-pinyin">${escapeHtml(w.pinyin)}</span>`
+      + `<span class="sh-pinyin">${escapeHtml(toneNumbersToMarks(w.pinyin))}</span>`
       + `<span class="sh-meaning">${escapeHtml(w.meaning)}</span>`
       + `<span class="sh-pos">#${i + 1}</span></button>`;
   }).join('');
@@ -439,7 +441,7 @@ function fillStartSelect(list, selected) {
   list.forEach((w, i) => {
     const o = document.createElement('option');
     o.value = i;
-    o.textContent = `${i + 1}. ${w.hanzi}${w.pinyin ? '  ·  ' + w.pinyin : ''}`;
+    o.textContent = `${i + 1}. ${w.hanzi}${w.pinyin ? '  ·  ' + toneNumbersToMarks(w.pinyin) : ''}`;
     frag.appendChild(o);
   });
   sel.innerHTML = '';
@@ -480,7 +482,7 @@ function setupMapping() {
     const sel = $('map-' + f);
     const none = f === 'hanzi' ? '— choose —' : f === 'order' ? 'File order' : '— none —';
     sel.innerHTML = `<option value="-1">${none}</option>` +
-      parsed.columns.map((c, k) => `<option value="${k}">${escapeHtml(c)}: ${escapeHtml((parsed.rows[0][k] || '').slice(0, 24))}</option>`).join('');
+      parsed.columns.map((c, k) => `<option value="${k}">${escapeHtml(c)}: ${escapeHtml(toneNumbersToMarks((parsed.rows[0][k] || '').slice(0, 24)))}</option>`).join('');
     sel.value = String(map[f] ?? -1);
     sel.onchange = () => { map[f] = parseInt(sel.value, 10); updatePreview(); };
   }
@@ -501,7 +503,13 @@ function updatePreview() {
   const rows = parsed.rows.slice(skip ? 1 : 0, (skip ? 1 : 0) + 4);
   let html = '<tr>' + parsed.columns.map((c, k) =>
     `<th class="${fieldOf[k] ? 'mapped' : ''}">${fieldOf[k] ? names[fieldOf[k]] : escapeHtml(c)}</th>`).join('') + '</tr>';
-  html += rows.map(r => '<tr>' + r.map(v => `<td>${escapeHtml(v.length > 80 ? v.slice(0, 80) + '…' : v)}</td>`).join('') + '</tr>').join('');
+  html += rows.map(r => '<tr>' + r.map((v, k) => {
+    const field = fieldOf[k];
+    const displayed = field === 'pinyin' || field === 'examplePinyin' || field === 'example'
+      ? toneNumbersToMarks(v)
+      : v;
+    return `<td>${escapeHtml(displayed.length > 80 ? displayed.slice(0, 80) + '…' : displayed)}</td>`;
+  }).join('') + '</tr>').join('');
   $('preview').innerHTML = html;
   $('use-deck').disabled = !pending.words.length;
   $('plan-panel').hidden = false;
