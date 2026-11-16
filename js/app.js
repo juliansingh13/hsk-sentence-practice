@@ -5,6 +5,7 @@ import { renderResult, msgHtml } from './render.js';
 import { initGrammar } from './grammar.js';
 import { chineseToPinyin, toneNumbersToMarks } from './pinyin.js';
 import { initHoverDict } from './hover-dict.js';
+import { initChecker } from './checker.js';
 
 const STORE_KEY = 'hskw.v1';
 const $ = (id) => document.getElementById(id);
@@ -17,6 +18,7 @@ function defaultState() {
     progress: { blockStart: 0, blockDate: today(), completed: false, wordPos: 0 },
     history: {}, // key -> [{ text, result, ts }]
     grammar: { active: {}, stats: {}, generated: [], seen: {}, log: [] },
+    free: { mode: 'free', register: 'neutral', history: [] }, // Check page: newest first
   };
 }
 function load() {
@@ -64,18 +66,20 @@ function rollover() {
 
 // ---------- views ----------
 function show(view) {
-  for (const v of ['study', 'grammar', 'settings']) {
+  for (const v of ['study', 'grammar', 'check', 'settings']) {
     $('view-' + v).hidden = view !== v;
     $('nav-' + v).classList.toggle('active', view === v);
   }
   if (view === 'study') renderStudy();
   if (view === 'settings') renderSettings();
   if (view === 'grammar') grammar.render();
+  if (view === 'check') checker.render();
   try { sessionStorage.setItem('hskw.view', view); } catch {}
   window.scrollTo(0, 0);
 }
 $('nav-study').onclick = () => (state.deck ? show('study') : show('settings'));
 $('nav-grammar').onclick = () => show('grammar');
+$('nav-check').onclick = () => show('check');
 $('nav-settings').onclick = () => show('settings');
 
 // ---------- study ----------
@@ -566,11 +570,12 @@ $('import-input').addEventListener('change', async (e) => {
   if (!f) return;
   try {
     const data = JSON.parse(await f.text());
-    if (!data || typeof data !== 'object' || !(data.deck?.words || data.grammar)) throw new Error('Not a backup file.');
+    if (!data || typeof data !== 'object' || !(data.deck?.words || data.grammar || data.free)) throw new Error('Not a backup file.');
     const keep = { apiKey: state.settings.apiKey, passphrase: state.settings.passphrase };
     state = { ...defaultState(), ...data };
     state.grammar = { ...defaultState().grammar, ...(data.grammar || {}) };
     state.settings = { ...defaultState().settings, ...(data.settings || {}), ...keep };
+    checker.reset();
     save();
     $('settings-status').textContent = 'Backup imported.';
     renderSettings();
@@ -599,8 +604,18 @@ const grammar = initGrammar({
   goSettings: () => show('settings'),
 });
 
+const checker = initChecker({
+  getState: () => state,
+  save,
+  hasCredentials,
+  ownKey: () => state.settings.apiKey,
+  server: (path, payload) => postServer(path, { passphrase: state.settings.passphrase, ...payload }),
+  goSettings: () => show('settings'),
+});
+
 let startView = null;
 try { startView = sessionStorage.getItem('hskw.view'); } catch {}
 if (startView === 'grammar') show('grammar');
+else if (startView === 'check') show('check');
 else if (startView === 'settings') show('settings');
 else show(state.deck ? 'study' : 'settings');

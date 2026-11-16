@@ -23,6 +23,15 @@ Level assignments follow the [official HSK syllabus released in November 2025](h
 
 Every question can be followed up with questions to the tutor. Structures are scheduled with a simple Leitner system (a wrong answer brings a structure back within minutes, right answers push it out to 1, 2, 4, 8, 16 days), and “Due for review” in the scope menu shows only those. The built-in bank has 123 hand-written questions; **Generate new questions** asks DeepSeek for 8 more on your weakest structures. Generated questions are marked “AI” and can be removed with one click if one is wrong.
 
+## Check page
+
+The **Check** tab works without a vocabulary list (it still needs a DeepSeek key or the passphrase). It has two modes:
+
+- **Check my Chinese (改错)**: any Chinese you wrote, up to 1500 characters. Optionally say in English what you meant and pick a register (casual, neutral, formal). Mistakes are marked as **grammar**, **word choice** (wrong word, collocation or measure word), **naturalness** and, only when you said what you meant, **meaning**. Each sentence gets a corrected and a natural version.
+- **Explain a sentence (解释)**: Chinese you didn't write, up to 500 characters. You get the full pinyin, a natural translation, a word-by-word table (word, pinyin, meaning, role), the grammar points with an extra example each, and notes on register and idioms. It only mentions errors if the sentence clearly contains one.
+
+Both modes have the follow-up chat. The last 100 checks and explanations are kept in a history (newest first) that can be reopened with its chat or deleted entry by entry; it is part of Settings → Backup. In passphrase mode both go through `/api/check` with `mode: "free"` or `mode: "explain"` (`/api/chat` takes the same `mode`).
+
 ## Hover dictionary
 
 Rest the pointer on any Chinese character (or tap it on a phone) to see the word it belongs to, its pinyin and meaning, and its number if it is in your deck (your deck's pinyin and meaning are shown first). The dictionary is [CC-CEDICT](https://cc-cedict.org/wiki/) by MDBG, licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). `data/cedict.txt` is a shortened derivative (simplified words up to five characters, tone-marked pinyin, the first senses of each reading; county and district names removed), distributed under the same licence. It is downloaded the first time you hover over Chinese text and kept in the browser's cache. Rebuild it with `node scripts/build-dict.mjs` (downloads the latest CC-CEDICT) or `node scripts/build-dict.mjs path/to/cedict_ts.u8`.

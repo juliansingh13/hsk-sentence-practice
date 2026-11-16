@@ -13,6 +13,7 @@
     <nav class="topnav">
       <button id="nav-study" class="navbtn" type="button">Words</button>
       <button id="nav-grammar" class="navbtn" type="button">Grammar</button>
+      <button id="nav-check" class="navbtn" type="button">Check</button>
       <button id="nav-settings" class="navbtn" type="button">Settings</button>
     </nav>
   </header>
@@ -130,6 +131,62 @@
       </div>
 
       <div id="g-ref" hidden></div>
+    </section>
+
+    <!-- CHECK VIEW: free checking and sentence explanations, not tied to a deck word -->
+    <section id="view-check" hidden>
+      <div class="check-layout">
+        <div class="check-side">
+          <div class="c-top">
+            <div class="g-modes c-modes" id="c-modes" role="tablist" aria-label="Mode">
+              <button type="button" class="g-mode" role="tab" data-mode="free"><span class="zh">改错</span><span class="en">Check my Chinese</span></button>
+              <button type="button" class="g-mode" role="tab" data-mode="explain"><span class="zh">解释</span><span class="en">Explain a sentence</span></button>
+            </div>
+            <div class="c-nokey" id="c-nokey" hidden>To use this page, add your DeepSeek API key or the site passphrase in <a href="#" id="c-go-settings">Settings</a>.</div>
+            <div class="composer c-composer">
+              <label class="label" for="c-text" id="c-text-label">Your Chinese</label>
+              <textarea id="c-text" rows="5" spellcheck="false"></textarea>
+              <div class="c-fields" id="c-free-fields">
+                <label for="c-meant">What I meant <span class="c-opt">optional, in English</span>
+                  <input type="text" id="c-meant" autocomplete="off" maxlength="500" placeholder="e.g. I smoke far too much every day">
+                </label>
+                <div class="c-register">
+                  <span class="c-register-label" id="c-register-label">Register</span>
+                  <div class="seg" role="radiogroup" aria-labelledby="c-register-label">
+                    <label><input type="radio" name="c-register" value="casual"><span>Casual</span></label>
+                    <label><input type="radio" name="c-register" value="neutral"><span>Neutral</span></label>
+                    <label><input type="radio" name="c-register" value="formal"><span>Formal</span></label>
+                  </div>
+                </div>
+              </div>
+              <div class="composer-actions">
+                <span class="hint">Ctrl/⌘ + Enter</span>
+                <span class="c-count" id="c-count" hidden></span>
+                <button class="primary" id="c-submit" type="button">Check</button>
+              </div>
+              <div class="status" id="c-status" hidden></div>
+            </div>
+          </div>
+          <details class="history c-history" id="c-history" open hidden>
+            <summary id="c-history-summary">History</summary>
+            <ul class="c-hist-list" id="c-hist-list"></ul>
+          </details>
+        </div>
+
+        <div class="check-main">
+          <div class="c-empty" id="c-empty"></div>
+          <div id="c-result"></div>
+          <div class="chat" id="c-chat" hidden>
+            <div class="label">Ask about this</div>
+            <div class="chat-log" id="c-chat-log"></div>
+            <div class="chat-input-row">
+              <textarea id="c-chat-input" rows="2"></textarea>
+              <button class="primary" id="c-chat-send" type="button">Ask</button>
+            </div>
+            <div class="status" id="c-chat-status" hidden></div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- SETTINGS VIEW -->

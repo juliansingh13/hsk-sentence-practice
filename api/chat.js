@@ -9,10 +9,11 @@ export default async function handler(req, res) {
   const expected = process.env.APP_PASSPHRASE;
   if (!expected) return res.status(403).json({ error: 'This site has no shared key. Add your own DeepSeek API key in Settings.' });
   const body = typeof req.body === 'string' ? (safeJson(req.body) || {}) : (req.body || {});
-  const { passphrase, word, text, result, messages } = body;
+  const { passphrase, word, text, result, messages, mode, meant, register } = body;
   if (passphrase !== expected) return res.status(401).json({ error: 'Wrong passphrase. Check it in Settings.' });
+  if (mode != null && !['vocab', 'free', 'explain'].includes(mode)) return res.status(400).json({ error: 'Unknown mode.' });
 
-  const msgs = chatMessages(word, text, result, messages);
+  const msgs = chatMessages(word, text, result, messages, { mode, meant, register });
   if (msgs.length < 2 || msgs[msgs.length - 1].role !== 'user') return res.status(400).json({ error: 'No question given.' });
 
   if (process.env.MOCK === '1') {

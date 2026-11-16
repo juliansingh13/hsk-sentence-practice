@@ -15,6 +15,8 @@
   --gr-bg: #fbedcc;
   --nat: #2f6f9f;         /* naturalness */
   --nat-bg: #dcebf6;
+  --mean: #7a4fb0;        /* meaning (Check page) */
+  --mean-bg: #ece2f7;
   --ok: #2e7d4f;
   --ok-bg: #dcf0e3;
   --shadow: 0 1px 2px rgba(60, 45, 20, .06), 0 6px 24px rgba(60, 45, 20, .06);
@@ -41,6 +43,8 @@
     --gr-bg: #463616;
     --nat: #7cb6e3;
     --nat-bg: #1d3446;
+    --mean: #b99ae8;
+    --mean-bg: #33284a;
     --ok: #6fca93;
     --ok-bg: #1d3a28;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.25);
@@ -533,3 +537,111 @@ label.check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .hd-char-pinyin { color: var(--accent); margin-right: 6px; }
 .credit { margin: 28px 0 8px; font-size: 12px; color: var(--ink-3); text-align: center; }
 .credit a { color: inherit; }
+
+/* ---------- Check page ---------- */
+/* Error types of the free checker: word choice reuses the target-word colours, meaning has its own. */
+.legend .l-wc::before { background: var(--tw); }
+.legend .l-mean::before { background: var(--mean); }
+mark.err-word_choice { background: var(--tw-bg); box-shadow: inset 0 -2px 0 var(--tw); }
+mark.err-meaning { background: var(--mean-bg); box-shadow: inset 0 -2px 0 var(--mean); }
+mark.err-word_choice sup { color: var(--tw); }
+mark.err-meaning sup { color: var(--mean); }
+.num.t-word_choice { background: var(--tw); }
+.num.t-meaning { background: var(--mean); }
+.summary .fb-mean strong { color: var(--mean); }
+.tag-wc { background: var(--tw-bg); box-shadow: inset 0 -2px 0 var(--tw); }
+.tag-mean { background: var(--mean-bg); box-shadow: inset 0 -2px 0 var(--mean); }
+
+/* Single column on phones: form, result + chat, history. Two columns on wide screens. */
+.check-layout { display: flex; flex-direction: column; }
+.check-side { display: contents; }
+.c-top { order: 1; }
+.check-main { order: 2; }
+.c-history { order: 3; }
+.c-modes { margin: 8px 0 14px; }
+.c-composer { margin-top: 0; }
+.c-nokey {
+  background: var(--gr-bg); color: var(--ink); border-radius: 10px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px;
+}
+.c-nokey a { color: var(--accent); font-weight: 600; }
+.c-fields { display: grid; gap: 10px; margin-top: 10px; }
+.c-opt { color: var(--ink-3); font-size: 12px; margin-left: 4px; }
+.c-register { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.c-register-label { font-size: 14px; color: var(--ink-2); }
+.seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border-radius: 10px; }
+.seg label { position: relative; font-size: 14px; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: block; padding: 4px 14px; border-radius: 8px; color: var(--ink-2); cursor: pointer; }
+.seg input:checked + span { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(60,45,20,.12); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+.c-composer .hint { margin-right: auto; }
+.c-count { font-size: 13px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.c-count.over { color: var(--tw); font-weight: 600; }
+.c-empty { color: var(--ink-2); font-size: 15px; margin-top: 20px; }
+.c-empty p { margin: 0; line-height: 1.8; }
+#c-result .result { margin-top: 20px; }
+#c-chat { margin-top: 16px; }
+
+.c-history { margin-top: 22px; }
+.c-hist-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.c-hist-item { display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.c-hist-item.active { border-color: var(--accent); }
+.c-hist-open {
+  flex: 1; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: center;
+  text-align: left; background: none; border: 0; padding: 7px 4px 7px 10px; cursor: pointer;
+}
+.c-hist-tag { font-size: 11px; font-weight: 700; border-radius: 5px; padding: 1px 6px; }
+.c-hist-tag.t-free { color: var(--tw); background: var(--tw-bg); }
+.c-hist-tag.t-explain { color: var(--nat); background: var(--nat-bg); }
+.c-hist-text { font-family: var(--font-cjk); font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-hist-meta { grid-column: 2; font-size: 12px; color: var(--ink-3); }
+.c-hist-del {
+  flex: 0 0 auto; width: 38px; background: none; border: 0; border-radius: 0 10px 10px 0;
+  color: var(--ink-3); font-size: 20px; line-height: 1; cursor: pointer;
+}
+.c-hist-del:hover, .c-hist-del:focus-visible { color: var(--tw); background: var(--tw-bg); }
+
+/* Explain result */
+.ex-head .sentence-text { font-size: 22px; }
+.ex-head .sentence-pinyin { font-size: 15px; margin-bottom: 4px; }
+.ex-translation { font-size: 16px; }
+.ex-error { background: var(--gr-bg); border-left: 3px solid var(--gr); border-radius: 10px; padding: 10px 14px; font-size: 15px; }
+.ex-error strong { color: var(--gr); }
+.ex-words { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 4px; }
+.ex-words th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 500;
+  padding: 2px 10px 6px 0; border-bottom: 1px solid var(--line);
+}
+.ex-words td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+.ex-words tr:last-child td { border-bottom: 0; }
+.ex-w { font-family: var(--font-cjk); font-size: 19px; white-space: nowrap; }
+.ex-py { color: var(--accent); white-space: nowrap; }
+.ex-role { color: var(--ink-2); font-size: 14px; }
+.ex-points { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 16px; }
+.ex-points li::marker { color: var(--ink-3); }
+.ex-pattern { font-family: var(--font-cjk); font-size: 18px; font-weight: 600; color: var(--accent); }
+.ex-example { margin-top: 6px; background: var(--surface-2); border-radius: 10px; padding: 8px 12px; }
+.ex-zh { font-family: var(--font-cjk); font-size: 17px; }
+.ex-example .sentence-pinyin { margin: 1px 0 2px; }
+.ex-en { color: var(--ink-2); font-size: 14px; }
+.ex-notes { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); font-size: 15px; }
+
+@media (max-width: 600px) {
+  /* Word table as stacked rows: the word on the left, pinyin / meaning / role beside it. */
+  .ex-words thead { display: none; }
+  .ex-words tr { display: grid; grid-template-columns: 4.4em minmax(0, 1fr); column-gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .ex-words tr:last-child { border-bottom: 0; }
+  .ex-words td { padding: 0; border: 0; }
+  .ex-w { grid-row: 1 / span 3; white-space: normal; }
+  .ex-py, .ex-m, .ex-role { grid-column: 2; }
+}
+
+@media (min-width: 1100px) {
+  .check-layout {
+    display: grid; grid-template-columns: minmax(380px, 460px) minmax(0, 1fr); gap: 32px; align-items: start;
+  }
+  .check-side { display: block; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 2px; }
+  .c-modes { margin-top: 0; }
+  #c-result .result, .c-empty { margin-top: 0; }
+  #c-text { min-height: 150px; }
+}
