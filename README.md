@@ -23,6 +23,10 @@ Level assignments follow the [official HSK syllabus released in November 2025](h
 
 Every question can be followed up with questions to the tutor. Structures are scheduled with a simple Leitner system (a wrong answer brings a structure back within minutes, right answers push it out to 1, 2, 4, 8, 16 days), and “Due for review” in the scope menu shows only those. The built-in bank has 123 hand-written questions; **Generate new questions** asks DeepSeek for 8 more on your weakest structures. Generated questions are marked “AI” and can be removed with one click if one is wrong.
 
+## Hover dictionary
+
+Rest the pointer on any Chinese character (or tap it on a phone) to see the word it belongs to, its pinyin and meaning, and its number if it is in your deck (your deck's pinyin and meaning are shown first). The dictionary is [CC-CEDICT](https://cc-cedict.org/wiki/) by MDBG, licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). `data/cedict.txt` is a shortened derivative (simplified words up to five characters, tone-marked pinyin, the first senses of each reading; county and district names removed), distributed under the same licence. It is downloaded the first time you hover over Chinese text and kept in the browser's cache. Rebuild it with `node scripts/build-dict.mjs` (downloads the latest CC-CEDICT) or `node scripts/build-dict.mjs path/to/cedict_ts.u8`.
+
 Pinyin is generated in the browser by [pinyin-pro](https://github.com/zh-lx/pinyin-pro) (MIT), bundled in `js/vendor/`.
 
 ## How the AI calls work

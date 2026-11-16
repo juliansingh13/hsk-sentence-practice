@@ -18,7 +18,7 @@ const handlers = {
   '/api/chat': (await import('./api/chat.js')).default,
   '/api/grammar': (await import('./api/grammar.js')).default,
 };
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8' };
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');

@@ -4,6 +4,7 @@ import { checkMessages, chatMessages, normalizeCheck, callDeepSeek, safeJson } f
 import { renderResult, msgHtml } from './render.js';
 import { initGrammar } from './grammar.js';
 import { chineseToPinyin, toneNumbersToMarks } from './pinyin.js';
+import { initHoverDict } from './hover-dict.js';
 
 const STORE_KEY = 'hskw.v1';
 const $ = (id) => document.getElementById(id);
@@ -582,6 +583,9 @@ $('import-input').addEventListener('change', async (e) => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && !$('view-study').hidden) renderStudy();
 });
+
+// Hover (or tap) any Chinese character for its word, pinyin and meaning. The dictionary loads on first use.
+initHoverDict({ getWords: words });
 
 const grammar = initGrammar({
   getState: () => state,
