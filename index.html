@@ -6,6 +6,20 @@
   <title>造句 · HSK Sentence Practice</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23b4412f'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white'>句</text></svg>">
   <link rel="stylesheet" href="style.css">
+  <!-- Vercel Web Analytics (plain-HTML integration): cookieless, anonymous page-view counts.
+       Only the page's origin and path are sent; no app content. The script exists only on Vercel. -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    window.va('beforeSend', function (event) {
+      try {
+        var url = new URL(event.url);
+        return Object.assign({}, event, { url: url.origin + url.pathname });
+      } catch (e) {
+        return null;
+      }
+    });
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -242,6 +256,7 @@
       <div class="panel">
         <h2>Backup</h2>
         <p class="muted">Your position, progress and past attempts live in this browser. Export them to move to another device (your API key and passphrase are not included).</p>
+        <p class="muted small">This site uses cookieless Vercel Web Analytics for anonymous page-view counts. None of your sentences, words or keys are sent to it.</p>
         <div class="row">
           <button class="ghost" id="export-btn" type="button">Export data</button>
           <label class="filebtn ghostfile"><input type="file" id="import-input" accept=".json,application/json"><span>Import data</span></label>
