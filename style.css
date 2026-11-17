@@ -645,3 +645,43 @@ mark.err-meaning sup { color: var(--mean); }
   #c-result .result, .c-empty { margin-top: 0; }
   #c-text { min-height: 150px; }
 }
+
+#view-vocab { max-width: 1100px; margin: 0 auto; }
+.vocab-toolbar { display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; }
+.vocab-search-wrap { position: relative; flex: 1; }
+.vocab-search-wrap span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 22px; pointer-events: none; }
+#vocab-search { width: 100%; margin: 0; padding: 10px 12px 10px 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; }
+.vocab-columns { position: relative; flex: none; }
+.vocab-columns summary { list-style: none; cursor: pointer; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--surface); }
+.vocab-columns summary::-webkit-details-marker { display: none; }
+.vocab-column-options { position: absolute; z-index: 10; right: 0; top: calc(100% + 5px); width: 220px; max-height: 60vh; overflow: auto; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); }
+.vocab-column-options label { display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer; }
+.vocab-column-options input { margin: 0; accent-color: var(--accent); }
+.vocab-table { width: 100%; }
+.vocab-table th button { border: 0; background: none; font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.vocab-table .sort-indicator { color: var(--accent); }
+.vocab-table td, .vocab-table th { vertical-align: middle; }
+.vocab-table td:nth-child(2) { font-family: var(--font-cjk); font-size: 18px; }
+@media (max-width: 520px) { .vocab-toolbar { align-items: stretch; } }
+
+.vocab-list-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vocab-select-cell { width: 42px; min-width: 42px !important; max-width: 42px !important; text-align: center !important; }
+.vocab-select-cell input { width: 18px; height: 18px; margin: 0; vertical-align: middle; accent-color: var(--accent); cursor: pointer; }
+
+.selection-action { position: fixed; z-index: 150; display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 16px)); padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); font-size: 13px; }
+.selection-action[hidden] { display: none; }
+.selection-action button { border: 0; border-radius: 7px; background: var(--accent); color: white; padding: 7px 10px; cursor: pointer; white-space: nowrap; }
+.selection-action span { overflow-wrap: anywhere; }
+
+.vocab-editor { width: min(720px, calc(100vw - 24px)); max-height: 85vh; border: 1px solid var(--line); border-radius: 14px; padding: 22px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.vocab-editor::backdrop { background: rgba(0,0,0,.35); }
+#vocab-edit-fields { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin: 16px 0; }
+#vocab-edit-fields label { min-width: 0; }
+#vocab-edit-fields textarea, #vocab-edit-fields input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; resize: vertical; }
+#vocab-edit-fields input:disabled { opacity: .65; }
+@media (max-width: 600px) { #vocab-edit-fields { grid-template-columns: 1fr; } }
+
+.vocab-info-cell { width: 40px; min-width: 40px !important; max-width: 40px !important; padding: 4px !important; text-align: center !important; }
+.vocab-info { width: 22px; height: 22px; padding: 0; display: inline-grid; place-items: center; border: 1.5px solid currentColor; border-radius: 50%; background: transparent; color: var(--ink-2); font: 700 14px/1 var(--font-ui); cursor: pointer; }
+.vocab-info:hover, .vocab-info:focus-visible { color: var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }

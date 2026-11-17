@@ -13,6 +13,7 @@
     <nav class="topnav">
       <button id="nav-study" class="navbtn" type="button">Words</button>
       <button id="nav-grammar" class="navbtn" type="button">Grammar</button>
+      <button id="nav-vocab" class="navbtn" type="button">Vocabulary</button>
       <button id="nav-check" class="navbtn" type="button">Check</button>
       <button id="nav-settings" class="navbtn" type="button">Settings</button>
     </nav>
@@ -189,44 +190,22 @@
       </div>
     </section>
 
+    <section id="view-vocab" hidden>
+      <h2>HSK vocabulary</h2>
+      <p>Search or sort the list, then choose where your next study block begins. Also, you can add new vocabs by selecting text now!</p>
+      <div class="vocab-toolbar">
+        <div class="vocab-search-wrap"><span aria-hidden="true">&#128269;</span><input id="vocab-search" type="search" placeholder="Search vocabulary" aria-label="Search vocabulary"></div>
+        <details class="vocab-columns"><summary>Columns</summary><div id="vocab-column-options" class="vocab-column-options"></div></details>
+      </div>
+      <div class="vocab-list-actions"><p id="vocab-count" class="muted"></p><button id="vocab-export-personal" class="ghost" type="button">Export personal to Anki</button><button id="vocab-export-selected" class="ghost" type="button" hidden>Export selected for Anki</button><button id="vocab-delete" class="ghost" type="button" hidden>Delete selected</button></div>
+<div class="preview-wrap"><table class="preview vocab-table"><thead id="vocab-head"></thead><tbody id="vocab-body"></tbody></table></div><p id="vocab-limit" class="muted"></p>
+    </section>
+
+    <dialog id="vocab-editor" class="vocab-editor"><form id="vocab-edit-form" method="dialog"><h2>Edit vocabulary</h2><div id="vocab-edit-fields"></div><div class="row"><button class="primary" id="vocab-edit-save" type="submit">Save</button><button class="ghost" type="button" id="vocab-edit-cancel">Cancel</button></div></form></dialog>
+
     <!-- SETTINGS VIEW -->
     <section id="view-settings" hidden>
-      <div class="panel intro" id="intro">
-        <h2>Practise your new Anki words in sentences</h2>
-        <p>Each day this site shows the new words from your Anki deck. You write sentences with each word, and an AI tutor (DeepSeek) marks mistakes in three colours: how you used the <span class="tag tag-tw">new word</span>, <span class="tag tag-gr">grammar</span>, and <span class="tag tag-nat">naturalness</span>, then explains them in English. You can ask follow-up questions about every correction.</p>
-        <p class="muted">Setup takes about five minutes: upload your deck, choose where you are in it, and add a DeepSeek API key. Your deck, progress and key stay in this browser.</p>
-      </div>
-
-      <div class="panel">
-        <h2>1 · Vocabulary list</h2>
-        <ol class="steps">
-          <li>In Anki on your computer, open <em>File → Export…</em></li>
-          <li>Export format: <em>Notes in Plain Text (.txt)</em>. Include: your deck.</li>
-          <li>Untick <em>Include HTML and media references</em>, then export and upload the file here.</li>
-        </ol>
-        <p class="muted">After uploading, check that each field below points to the right column. The preview shows the first rows. Any tab- or comma-separated word list works too.</p>
-        <div class="current-deck" id="current-deck"></div>
-        <label class="filebtn">
-          <input type="file" id="file-input" accept=".txt,.tsv,.csv,text/plain,text/csv">
-          <span>Choose file…</span>
-        </label>
-        <div id="mapping" hidden>
-          <p class="muted" id="mapping-info"></p>
-          <div class="mapping-grid">
-            <label>Word (汉字)<select id="map-hanzi"></select></label>
-            <label>Pinyin<select id="map-pinyin"></select></label>
-            <label>Meaning<select id="map-meaning"></select></label>
-            <label>Example sentence<select id="map-example"></select></label>
-            <label>Example pinyin<select id="map-examplePinyin"></select></label>
-            <label>Example translation<select id="map-exampleTranslation"></select></label>
-            <label>Order words by<select id="map-order"></select></label>
-          </div>
-          <label class="check"><input type="checkbox" id="skip-first"> First row is a header</label>
-          <div class="preview-wrap"><table class="preview" id="preview"></table></div>
-          <button class="primary" id="use-deck" type="button">Use this list</button>
-        </div>
-      </div>
-
+      <div class="panel"><h2>Vocabulary list</h2><p id="current-deck"></p><p>The shared HSK list is ready for everyone. Set your position here or in the Vocabulary tab.</p></div>
       <div class="panel" id="plan-panel">
         <h2>2 · Daily plan</h2>
         <div class="plan-grid">
@@ -250,6 +229,7 @@
           <li>Top up a small amount (the minimum lasts months: one check costs a fraction of a cent).</li>
           <li>Open <em>API keys</em>, create a key, and paste it here.</li>
         </ol>
+        <p id="credential-mode" class="muted small"></p>
         <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="sk-…">
         <p class="muted small">The key is saved only in this browser and sent only to DeepSeek (api.deepseek.com), never to this website’s server. Anyone who can use this browser could read it, so keep only a small balance on the account.</p>
         <details class="passphrase-box">
@@ -261,7 +241,7 @@
 
       <div class="panel">
         <h2>Backup</h2>
-        <p class="muted">Your list, progress and past attempts live in this browser. Export them to move to another device (your API key and passphrase are not included).</p>
+        <p class="muted">Your position, progress and past attempts live in this browser. Export them to move to another device (your API key and passphrase are not included).</p>
         <div class="row">
           <button class="ghost" id="export-btn" type="button">Export data</button>
           <label class="filebtn ghostfile"><input type="file" id="import-input" accept=".json,application/json"><span>Import data</span></label>
@@ -277,6 +257,7 @@
     </section>
   </main>
 
+  <div id="selection-action" class="selection-action" hidden><button id="add-selection" type="button">Add as vocab</button><span id="selection-status"></span></div>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import { parseAnkiExport, guessMapping, buildWords } from './anki.js';
+import { vocabMessages, normalizeVocab } from '../api/vocab.js';
 import { escapeHtml } from './highlight.js';
 import { checkMessages, chatMessages, normalizeCheck, callDeepSeek, safeJson } from './prompts.js';
 import { renderResult, msgHtml } from './render.js';
@@ -7,13 +7,14 @@ import { chineseToPinyin, toneNumbersToMarks } from './pinyin.js';
 import { initHoverDict } from './hover-dict.js';
 import { initChecker } from './checker.js';
 
+let vocabulary = [];
 const STORE_KEY = 'hskw.v1';
 const $ = (id) => document.getElementById(id);
 
 // ---------- state ----------
 function defaultState() {
   return {
-    deck: null, // { name, words: [{hanzi,pinyin,meaning,example}], importedAt }
+    deck: null, // legacy backups only; vocabulary is shared
     settings: { perDay: 7, apiKey: '', passphrase: '' },
     progress: { blockStart: 0, blockDate: today(), completed: false, wordPos: 0 },
     history: {}, // key -> [{ text, result, ts }]
@@ -38,7 +39,9 @@ function today() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-const words = () => state.deck?.words || [];
+const words = () => vocabulary;
+function localVocab() { try { return JSON.parse(localStorage.getItem('hskw.localVocab') || '[]'); } catch { return []; } }
+function storeLocalVocab(items) { localStorage.setItem('hskw.localVocab', JSON.stringify(items)); }
 const perDay = () => Math.max(1, state.settings.perDay | 0);
 function blockIndices() {
   const start = state.progress.blockStart;
@@ -47,7 +50,7 @@ function blockIndices() {
   for (let i = start; i < end; i++) out.push(i);
   return out;
 }
-const historyKey = (i) => `${i}|${words()[i]?.hanzi}`;
+const historyKey = (i) => `vocab:${words()[i]?.ankiId}`;
 
 // Advance to the next block on a new calendar day, but only if the last block was finished.
 function rollover() {
@@ -66,18 +69,20 @@ function rollover() {
 
 // ---------- views ----------
 function show(view) {
-  for (const v of ['study', 'grammar', 'check', 'settings']) {
+  for (const v of ['study', 'grammar', 'check', 'vocab', 'settings']) {
     $('view-' + v).hidden = view !== v;
     $('nav-' + v).classList.toggle('active', view === v);
   }
   if (view === 'study') renderStudy();
   if (view === 'settings') renderSettings();
+  if (view === 'vocab') renderVocab();
   if (view === 'grammar') grammar.render();
   if (view === 'check') checker.render();
   try { sessionStorage.setItem('hskw.view', view); } catch {}
   window.scrollTo(0, 0);
 }
-$('nav-study').onclick = () => (state.deck ? show('study') : show('settings'));
+$('nav-study').onclick = () => show('study');
+$('nav-vocab').onclick = () => show('vocab');
 $('nav-grammar').onclick = () => show('grammar');
 $('nav-check').onclick = () => show('check');
 $('nav-settings').onclick = () => show('settings');
@@ -86,7 +91,7 @@ $('nav-settings').onclick = () => show('settings');
 let lastResult = null; // result shown for the current word in this session
 
 function renderStudy() {
-  if (!state.deck || !words().length) { show('settings'); return; }
+  if (!words().length) { show('vocab'); return; }
   rollover();
   const idx = blockIndices();
   const p = state.progress;
@@ -418,134 +423,187 @@ $('chat-input').addEventListener('keydown', (e) => {
 });
 
 // ---------- settings ----------
-let pending = null; // { parsed, name }
-
 function renderSettings() {
-  const d = state.deck;
-  $('current-deck').innerHTML = d
-    ? `Current list: <strong>${escapeHtml(d.name)}</strong> · ${d.words.length} words`
-    : 'No list loaded yet.';
+  $('current-deck').textContent = `${words().length} shared HSK words`;
   $('per-day').value = state.settings.perDay;
   $('passphrase').value = state.settings.passphrase || '';
   $('api-key').value = state.settings.apiKey || '';
+  $('credential-mode').textContent = state.settings.apiKey ? 'Using your API key. Clear it and save to use the passphrase instead.' : state.settings.passphrase ? 'Using the owner passphrase.' : '';
   document.querySelector('.passphrase-box').open = !!state.settings.passphrase;
-  $('intro').hidden = !!state.deck;
-  $('plan-panel').hidden = false;
-  fillStartSelect(currentWordList(), state.progress.blockStart);
+  fillStartSelect(words(), state.progress.blockStart);
   $('settings-status').textContent = '';
 }
-
-function currentWordList() {
-  if (pending?.words) return pending.words;
-  return words();
-}
-
 function fillStartSelect(list, selected) {
   const sel = $('start-select');
-  const frag = document.createDocumentFragment();
-  list.forEach((w, i) => {
-    const o = document.createElement('option');
-    o.value = i;
-    o.textContent = `${i + 1}. ${w.hanzi}${w.pinyin ? '  ·  ' + toneNumbersToMarks(w.pinyin) : ''}`;
-    frag.appendChild(o);
-  });
   sel.innerHTML = '';
-  sel.appendChild(frag);
-  if (list.length) sel.value = String(Math.min(selected, list.length - 1));
+  list.forEach((w, i) => {
+    const option = document.createElement('option');
+    option.value = i;
+    option.textContent = `${w.ankiId}. ${w.hanzi} ? ${w.meaning}`;
+    sel.appendChild(option);
+  });
+  sel.value = String(Math.min(selected, list.length - 1));
 }
-
 $('start-search').addEventListener('input', (e) => {
   const q = e.target.value.trim().toLowerCase();
-  if (!q) return;
-  const strip = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, '').toLowerCase();
-  const qs = strip(q);
-  const list = currentWordList();
-  const i = list.findIndex(w => w.hanzi === q) >= 0
-    ? list.findIndex(w => w.hanzi === q)
-    : list.findIndex(w => w.hanzi.includes(q) || strip(w.pinyin).startsWith(qs));
+  const i = words().findIndex(w => w.ankiId === q || w.hanzi.includes(q) || w.pinyin.toLowerCase().includes(q));
   if (i >= 0) $('start-select').value = String(i);
 });
-
-$('file-input').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const text = await file.text();
-  const parsed = parseAnkiExport(text);
-  if (!parsed.rows.length) { alert('No rows found in this file.'); return; }
-  const map = guessMapping(parsed);
-  pending = { parsed, name: file.name, map };
-  setupMapping();
-  e.target.value = '';
-});
-
-function setupMapping() {
-  const { parsed, map } = pending;
-  $('mapping').hidden = false;
-  $('mapping-info').textContent = `${parsed.rows.length} rows, ${parsed.columns.length} columns. Check that each field points to the right column.`;
-  const fields = ['hanzi', 'pinyin', 'meaning', 'example', 'examplePinyin', 'exampleTranslation', 'order'];
-  for (const f of fields) {
-    const sel = $('map-' + f);
-    const none = f === 'hanzi' ? '— choose —' : f === 'order' ? 'File order' : '— none —';
-    sel.innerHTML = `<option value="-1">${none}</option>` +
-      parsed.columns.map((c, k) => `<option value="${k}">${escapeHtml(c)}: ${escapeHtml(toneNumbersToMarks((parsed.rows[0][k] || '').slice(0, 24)))}</option>`).join('');
-    sel.value = String(map[f] ?? -1);
-    sel.onchange = () => { map[f] = parseInt(sel.value, 10); updatePreview(); };
-  }
-  // Guess whether the first row is a header (no CJK in the word column).
-  const first = parsed.rows[0][map.hanzi] || '';
-  $('skip-first').checked = map.hanzi >= 0 && !/[㐀-鿿]/.test(first) && parsed.rows.length > 1;
-  $('skip-first').onchange = updatePreview;
-  updatePreview();
+const vocabColumns = [
+  ['ankiId', 'ID'], ['hanzi', 'Word'], ['meaning', 'Translation'],
+  ['pinyin', 'Pinyin'], ['example', 'Example'], ['partOfSpeech', 'Part of speech'],
+  ['origin', 'Origin'], ['dateAdded', 'Date added'], ['traditional', 'Traditional'],
+  ['examplePinyin', 'Example pinyin'], ['exampleTranslation', 'Example translation'],
+  ['homophone', 'Homophone'], ['homograph', 'Homograph'],
+];
+const mandatoryVocabColumns = new Set(['ankiId', 'hanzi', 'meaning']);
+let visibleVocabColumns;
+try { visibleVocabColumns = new Set(JSON.parse(localStorage.getItem('hskw.vocabColumns'))); }
+catch { visibleVocabColumns = new Set(['ankiId', 'hanzi', 'meaning', 'pinyin', 'example', 'partOfSpeech', 'origin', 'dateAdded']); }
+mandatoryVocabColumns.forEach(key => visibleVocabColumns.add(key));
+let vocabSort = 'ankiId', vocabDescending = false;
+const selectedVocab = new Set();
+function deletedVocabIds() {
+  try { return new Set(JSON.parse(localStorage.getItem('hskw.deletedVocabIds') || '[]')); }
+  catch { return new Set(); }
 }
-
-function updatePreview() {
-  const { parsed, map } = pending;
-  const skip = $('skip-first').checked;
-  pending.words = map.hanzi >= 0 ? buildWords(parsed.rows, map, skip) : [];
-  const fieldOf = {};
-  for (const [f, k] of Object.entries(map)) if (k >= 0 && f !== 'order') fieldOf[k] = f;
-  const names = { hanzi: 'Word', pinyin: 'Pinyin', meaning: 'Meaning', example: 'Example', examplePinyin: 'Ex. pinyin', exampleTranslation: 'Ex. translation' };
-  const rows = parsed.rows.slice(skip ? 1 : 0, (skip ? 1 : 0) + 4);
-  let html = '<tr>' + parsed.columns.map((c, k) =>
-    `<th class="${fieldOf[k] ? 'mapped' : ''}">${fieldOf[k] ? names[fieldOf[k]] : escapeHtml(c)}</th>`).join('') + '</tr>';
-  html += rows.map(r => '<tr>' + r.map((v, k) => {
-    const field = fieldOf[k];
-    const displayed = field === 'pinyin' || field === 'examplePinyin' || field === 'example'
-      ? toneNumbersToMarks(v)
-      : v;
-    return `<td>${escapeHtml(displayed.length > 80 ? displayed.slice(0, 80) + '…' : displayed)}</td>`;
-  }).join('') + '</tr>').join('');
-  $('preview').innerHTML = html;
-  $('use-deck').disabled = !pending.words.length;
-  $('plan-panel').hidden = false;
-  fillStartSelect(pending.words, 0);
+function renderDeleteButton() {
+  $('vocab-delete').hidden = !selectedVocab.size;
+  $('vocab-delete').textContent = `Delete selected (${selectedVocab.size})`;
+  $('vocab-export-selected').hidden = !selectedVocab.size;
 }
-
-$('use-deck').onclick = () => {
-  if (!pending?.words?.length) return;
-  $('mapping').hidden = true;
-  $('current-deck').innerHTML = `New list: <strong>${escapeHtml(pending.name)}</strong> · ${pending.words.length} words (press “Save and start” below)`;
-  $('start-select').focus();
+$('vocab-column-options').innerHTML = vocabColumns.map(([key, label]) => `<label><input type="checkbox" value="${key}" ${visibleVocabColumns.has(key) ? 'checked' : ''} ${mandatoryVocabColumns.has(key) ? 'disabled' : ''}> ${label}</label>`).join('');
+$('vocab-column-options').onchange = event => {
+  const input = event.target;
+  if (input.checked) visibleVocabColumns.add(input.value);
+  else visibleVocabColumns.delete(input.value);
+  localStorage.setItem('hskw.vocabColumns', JSON.stringify([...visibleVocabColumns]));
+  renderVocab();
 };
+function renderVocab() {
+  const q = $('vocab-search').value.trim().toLowerCase();
+  const filtered = words().map((w, i) => ({ ...w, index: i })).filter(w =>
+    !q || [w.ankiId, w.hanzi, w.meaning, w.pinyin, w.example, w.origin].some(v => v.toLowerCase().includes(q)));
+  filtered.sort((a, b) => {
+    const x = vocabSort === 'ankiId' ? (Number(a.ankiId) || Infinity) - (Number(b.ankiId) || Infinity)
+      : a[vocabSort].localeCompare(b[vocabSort], undefined, { numeric: true });
+    return (vocabDescending ? -x : x) || a.index - b.index;
+  });
+  const columns = vocabColumns.filter(([key]) => visibleVocabColumns.has(key));
+  const page = filtered.slice(0, 200);
+  $('vocab-head').innerHTML = `<tr><th class="vocab-select-cell"><input id="vocab-select-all" type="checkbox" aria-label="Select all displayed words" ${page.length && page.every(w => selectedVocab.has(w.ankiId)) ? 'checked' : ''}></th>${columns.map(([key, label]) => `<th><button data-vocab-sort="${key}" type="button" aria-label="Sort by ${label}">${label}<span class="sort-indicator">${key === vocabSort ? (vocabDescending ? ' \u2193' : ' \u2191') : ''}</span></button></th>`).join('')}<th>Position</th><th class="vocab-info-cell"><span class="sr-only">Info</span></th></tr>`;
+  $('vocab-count').textContent = `${filtered.length} of ${words().length} words`;
+  $('vocab-body').innerHTML = page.map(w => `<tr><td class="vocab-select-cell"><input class="vocab-select" type="checkbox" value="${escapeHtml(w.ankiId)}" aria-label="Select ${escapeHtml(w.hanzi)}" ${selectedVocab.has(w.ankiId) ? 'checked' : ''}></td>${columns.map(([key]) => `<td>${escapeHtml(w[key] || '')}</td>`).join('')}<td><button class="ghost vocab-mark" data-index="${w.index}" type="button">${w.index === state.progress.blockStart ? 'Current' : 'Start here'}</button></td><td class="vocab-info-cell"><button class="vocab-info" data-index="${w.index}" type="button" aria-label="Details for ${escapeHtml(w.hanzi)}"><span aria-hidden="true">i</span></button></td></tr>`).join('');
+  renderDeleteButton();
+  $('vocab-limit').textContent = filtered.length > 200 ? 'Showing first 200 matches. Search to narrow the list.' : '';
+}
+$('vocab-search').addEventListener('input', renderVocab);
+$('vocab-head').onchange = event => {
+  if (event.target.id !== 'vocab-select-all') return;
+  document.querySelectorAll('.vocab-select').forEach(input => {
+    input.checked = event.target.checked;
+    if (input.checked) selectedVocab.add(input.value); else selectedVocab.delete(input.value);
+  });
+  renderDeleteButton();
+};
+$('vocab-body').onchange = event => {
+  if (!event.target.matches('.vocab-select')) return;
+  if (event.target.checked) selectedVocab.add(event.target.value); else selectedVocab.delete(event.target.value);
+  renderDeleteButton();
+};
+$('vocab-delete').onclick = () => {
+  const deleted = deletedVocabIds();
+  const removedLocal = new Set([...selectedVocab]);
+  storeLocalVocab(localVocab().filter(w => !removedLocal.has(w.ankiId)));
+  selectedVocab.forEach(id => deleted.add(id));
+  localStorage.setItem('hskw.deletedVocabIds', JSON.stringify([...deleted]));
+  const currentId = words()[state.progress.blockStart]?.ankiId;
+  vocabulary = vocabulary.filter(w => !deleted.has(w.ankiId));
+  state.progress.blockStart = Math.max(0, vocabulary.findIndex(w => w.ankiId === currentId));
+  state.progress.wordPos = 0;
+  state.progress.completed = false;
+  selectedVocab.clear();
+  save(); renderVocab();
+};
+$('vocab-head').onclick = event => {
+  const button = event.target.closest('[data-vocab-sort]');
+  if (!button) return;
+  const key = button.dataset.vocabSort;
+  vocabDescending = key === vocabSort ? !vocabDescending : false;
+  vocabSort = key; renderVocab();
+};
+$('vocab-body').onclick = event => {
+  const info = event.target.closest('.vocab-info');
+  if (info) { openVocabEditor(Number(info.dataset.index)); return; }
+  const button = event.target.closest('.vocab-mark');
+  if (!button) return;
+  state.progress = { blockStart: Number(button.dataset.index), blockDate: today(), completed: false, wordPos: 0 };
+  save(); show('study');
+};
+
+const editFields = [
+  ['hanzi', 'Word'], ['traditional', 'Traditional'], ['pinyin', 'Pinyin'],
+  ['numberedPinyin', 'Numbered pinyin'], ['meaning', 'Translation'],
+  ['partOfSpeech', 'Part of speech'], ['example', 'Example sentence'],
+  ['exampleTraditional', 'Traditional example'], ['examplePinyin', 'Example pinyin'],
+  ['exampleNumberedPinyin', 'Numbered example pinyin'], ['exampleTranslation', 'Example translation'],
+  ['exampleCloze', 'Cloze sentence'], ['exampleTraditionalCloze', 'Traditional cloze sentence'],
+  ['homophone', 'Homophone'], ['homograph', 'Homograph'], ['origin', 'Origin'],
+  ['dateAdded', 'Date added'], ['audio', 'Audio'], ['exampleAudio', 'Example audio'], ['exampleImage', 'Example image'],
+];
+let editingVocabIndex = -1;
+function openVocabEditor(index) {
+  editingVocabIndex = index;
+  const word = words()[index];
+  $('vocab-edit-fields').innerHTML = `<label>ID<input value="${escapeHtml(word.ankiId)}" disabled></label>` +
+    editFields.map(([key, label]) => `<label>${label}<textarea name="${key}" rows="${['meaning', 'example', 'exampleTranslation'].includes(key) ? 2 : 1}">${escapeHtml(word[key] || '')}</textarea></label>`).join('');
+  $('vocab-editor').showModal();
+}
+$('vocab-edit-cancel').onclick = () => $('vocab-editor').close();
+$('vocab-edit-form').onsubmit = event => {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  const old = words()[editingVocabIndex];
+  const updated = { ...old };
+  for (const [key] of editFields) updated[key] = String(form.get(key) || '').trim();
+  if (!updated.hanzi || !updated.meaning) { alert('Word and translation are required.'); return; }
+  vocabulary[editingVocabIndex] = updated;
+  if (updated.origin === 'Personal' || old.origin === 'Personal') {
+    storeLocalVocab([...localVocab().filter(w => w.ankiId !== old.ankiId), updated]);
+  } else {
+    const edits = JSON.parse(localStorage.getItem('hskw.vocabEdits') || '{}');
+    edits[old.ankiId] = updated;
+    localStorage.setItem('hskw.vocabEdits', JSON.stringify(edits));
+  }
+  $('vocab-editor').close(); renderVocab();
+};
+async function exportAnki(wordsToExport, name) {
+  if (!wordsToExport.length) { alert('No vocabulary to export.'); return; }
+  try {
+    const response = await fetch('/api/anki-export', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: wordsToExport }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `Export failed (${response.status})`);
+    }
+    const blob = await response.blob();
+    const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+    link.download = `${name}-${today()}.apkg`; link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  } catch (error) { alert(`Anki export failed: ${error.message}`); }
+}
+$('vocab-export-personal').onclick = () => exportAnki(words().filter(w => w.origin === 'Personal'), 'personal-vocabulary');
+$('vocab-export-selected').onclick = () => exportAnki(words().filter(w => selectedVocab.has(w.ankiId)), 'selected-vocabulary');
 
 $('save-settings').onclick = () => {
   const per = Math.min(100, Math.max(1, parseInt($('per-day').value, 10) || 7));
   const start = parseInt($('start-select').value, 10) || 0;
   const pass = $('passphrase').value.trim();
   const apiKey = $('api-key').value.trim();
-  const newDeck = !!pending?.words?.length;
-  if (newDeck) {
-    $('mapping').hidden = true;
-    const changed = !state.deck || JSON.stringify(state.deck.words) !== JSON.stringify(pending.words);
-    state.deck = { name: pending.name, words: pending.words, importedAt: Date.now() };
-    if (changed) state.history = {};
-    pending = null;
-  }
-  state.settings.passphrase = pass;
-  state.settings.apiKey = apiKey;
-  if (!state.deck) { save(); $('settings-status').textContent = 'Key saved. Load a vocabulary list for the Words section; the Grammar section works without one.'; return; }
   const p = state.progress;
-  if (newDeck || start !== p.blockStart || per !== state.settings.perDay) {
+  if (start !== p.blockStart || per !== state.settings.perDay) {
     state.progress = { blockStart: start, blockDate: today(), completed: false, wordPos: 0 };
   }
   state.settings.perDay = per;
@@ -558,7 +616,7 @@ $('save-settings').onclick = () => {
 
 $('export-btn').onclick = () => {
   const { apiKey, passphrase, ...shareable } = state.settings;
-  const blob = new Blob([JSON.stringify({ ...state, settings: shareable }, null, 1)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ ...state, deck: null, deletedVocabIds: [...deletedVocabIds()], localVocab: localVocab(), vocabEdits: JSON.parse(localStorage.getItem('hskw.vocabEdits') || '{}'), settings: shareable }, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `hsk-sentences-backup-${today()}.json`;
@@ -570,9 +628,15 @@ $('import-input').addEventListener('change', async (e) => {
   if (!f) return;
   try {
     const data = JSON.parse(await f.text());
-    if (!data || typeof data !== 'object' || !(data.deck?.words || data.grammar || data.free)) throw new Error('Not a backup file.');
+    if (!data || typeof data !== 'object' || !(data.progress || data.grammar || data.free)) throw new Error('Not a backup file.');
     const keep = { apiKey: state.settings.apiKey, passphrase: state.settings.passphrase };
-    state = { ...defaultState(), ...data };
+    state = { ...defaultState(), ...data, deck: null };
+    if (Array.isArray(data.localVocab)) storeLocalVocab(data.localVocab);
+    if (data.vocabEdits && typeof data.vocabEdits === 'object') localStorage.setItem('hskw.vocabEdits', JSON.stringify(data.vocabEdits));
+    if (Array.isArray(data.deletedVocabIds)) {
+      localStorage.setItem('hskw.deletedVocabIds', JSON.stringify(data.deletedVocabIds));
+      vocabulary = vocabulary.filter(w => !data.deletedVocabIds.includes(w.ankiId));
+    }
     state.grammar = { ...defaultState().grammar, ...(data.grammar || {}) };
     state.settings = { ...defaultState().settings, ...(data.settings || {}), ...keep };
     checker.reset();
@@ -613,9 +677,60 @@ const checker = initChecker({
   goSettings: () => show('settings'),
 });
 
-let startView = null;
-try { startView = sessionStorage.getItem('hskw.view'); } catch {}
-if (startView === 'grammar') show('grammar');
-else if (startView === 'check') show('check');
-else if (startView === 'settings') show('settings');
-else show(state.deck ? 'study' : 'settings');
+let selectedExpression = '';
+function hideSelectionAction() { $('selection-action').hidden = true; }
+function updateSelectionAction() {
+  const selection = window.getSelection();
+  const text = selection?.toString().trim() || '';
+  if (!text || text.length > 40 || !/[\u3400-\u9fff]/u.test(text) ||
+      selection.anchorNode?.parentElement?.closest('input, textarea, select, [contenteditable], .selection-action')) {
+    hideSelectionAction(); return;
+  }
+  selectedExpression = text;
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  const popup = $('selection-action');
+  popup.hidden = false;
+  popup.style.left = `${Math.min(window.innerWidth - 160, Math.max(8, rect.left))}px`;
+  popup.style.top = `${Math.min(window.innerHeight - 48, rect.bottom + 8)}px`;
+  $('selection-status').textContent = '';
+}
+document.addEventListener('mouseup', () => setTimeout(updateSelectionAction, 0));
+document.addEventListener('keyup', event => { if (event.key === 'Escape') hideSelectionAction(); else updateSelectionAction(); });
+document.addEventListener('pointerdown', event => { if (!event.target.closest('.selection-action')) hideSelectionAction(); });
+$('add-selection').onclick = async () => {
+  const text = selectedExpression;
+  const button = $('add-selection');
+  button.disabled = true;
+  $('selection-status').textContent = 'Creating?';
+  try {
+    if (!hasCredentials()) throw new Error('Add a DeepSeek key or passphrase in Settings first.');
+    const data = state.settings.apiKey
+      ? normalizeVocab(safeJson(await callDeepSeek({ key: state.settings.apiKey, messages: vocabMessages(text), json: true, maxTokens: 700 })), text)
+      : normalizeVocab(await postServer('/api/vocab', { passphrase: state.settings.passphrase, text }), text);
+    if (words().some(w => w.hanzi === text)) throw new Error('This expression is already in your vocabulary list.');
+    const entry = { ...data, ankiId: `user-${Date.now()}`, noteId: '', origin: 'Personal', dateAdded: today() };
+    storeLocalVocab([...localVocab(), entry]);
+    vocabulary.push(entry);
+    hideSelectionAction();
+    if (!$('view-vocab').hidden) renderVocab();
+  } catch (error) { $('selection-status').textContent = error.message; }
+  finally { button.disabled = false; }
+};
+
+async function start() {
+  try {
+    const response = await fetch('data/vocab.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const edits = JSON.parse(localStorage.getItem('hskw.vocabEdits') || '{}');
+    vocabulary = [...(await response.json()).map(w => edits[w.ankiId] || w), ...localVocab()].filter(w => !deletedVocabIds().has(w.ankiId));
+    state.deck = null;
+    if (state.progress.blockStart >= vocabulary.length) state.progress.blockStart = 0;
+    let startView = null;
+    try { startView = sessionStorage.getItem('hskw.view'); } catch {}
+    show(['study', 'grammar', 'check', 'vocab', 'settings'].includes(startView) ? startView : 'study');
+  } catch (error) {
+    show('settings');
+    $('settings-status').textContent = `Could not load vocabulary: ${error.message}`;
+  }
+}
+start();

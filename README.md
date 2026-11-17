@@ -1,6 +1,6 @@
 # 造句练习 · HSK sentence practice
 
-Daily sentence-writing practice for the new words in your Anki HSK deck. Upload an Anki export, pick today's first word and how many new words you study per day, then write sentences with each word. DeepSeek checks them and marks three kinds of problems:
+Daily sentence-writing practice with a shared HSK 1?6 vocabulary list. Pick today's first word and how many new words you study per day, then write sentences with each word. DeepSeek checks them and marks three kinds of problems:
 
 - **Target word**: how the new word is used (meaning, collocation, part of speech, position, register)
 - **Grammar**: errors elsewhere in the sentence
@@ -65,4 +65,4 @@ node dev-server.js      # http://localhost:3000
 
 ## Data
 
-The vocabulary list, progress and past attempts are stored in your browser's localStorage. Use Settings → Backup to move them to another device. Only the current word or structure, your sentences and the corrections are sent to DeepSeek (via the server only in passphrase mode). Exported backups exclude the API key and passphrase.
+Your position, progress and past attempts are stored in your browser's localStorage; the vocabulary list is shared from the project. Use Settings → Backup to move them to another device. Only the current word or structure, your sentences and the corrections are sent to DeepSeek (via the server only in passphrase mode). Exported backups exclude the API key and passphrase.The shared vocabulary list is extracted from `HSK_1-6_english_chinese.apkg` into `data/vocab.json`. Use the Vocabulary tab to browse it and choose your position.

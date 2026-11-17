@@ -188,9 +188,12 @@ export async function callDeepSeek({ key, messages, json = false, model = DEFAUL
   }
   clearTimeout(timer);
   if (!r.ok) {
-    const detail = (await r.text().catch(() => '')).slice(0, 300);
+    const raw = await r.text().catch(() => '');
+    let detail = '';
+    try { detail = JSON.parse(raw)?.error?.message || ''; } catch {}
+    detail = String(detail).slice(0, 200);
     throw new Error(
-      r.status === 401 ? 'DeepSeek rejected the API key. Check it in Settings.'
+      r.status === 401 ? `DeepSeek rejected the API key${detail ? `: ${detail}` : '.'} Check the key in Settings and save again.`
       : r.status === 402 ? 'Your DeepSeek account has insufficient balance. Top it up at platform.deepseek.com.'
       : r.status === 429 ? 'DeepSeek rate limit hit; try again in a moment.'
       : `DeepSeek error ${r.status}: ${detail}`);
