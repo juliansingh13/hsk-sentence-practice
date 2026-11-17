@@ -1,4 +1,4 @@
-import { vocabMessages, normalizeVocab } from '../api/vocab.js';
+import { vocabMessages, normalizeVocab } from './vocab.js';
 import { escapeHtml } from './highlight.js';
 import { checkMessages, chatMessages, normalizeCheck, callDeepSeek, safeJson } from './prompts.js';
 import { renderResult, msgHtml } from './render.js';
