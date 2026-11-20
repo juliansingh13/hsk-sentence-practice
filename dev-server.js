@@ -33,6 +33,11 @@ http.createServer(async (req, res) => {
     res.json = (o) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(o)); };
     return handlers[url.pathname](req, res);
   }
+  // Vercel Web Analytics only exists on Vercel; serve an empty script locally instead of a 404.
+  if (url.pathname.startsWith('/_vercel/insights/')) {
+    res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+    return res.end('// Vercel Web Analytics is only served on Vercel.\n');
+  }
   const rel = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname).replace(/^\/+/, '');
   const file = path.join(root, rel);
   if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.statusCode = 404; return res.end('Not found'); }
