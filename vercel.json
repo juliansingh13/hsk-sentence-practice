@@ -7,6 +7,7 @@
       "maxDuration": 60
     },
     "api/anki-export.js": { "maxDuration": 60 },
+    "api/anki-import.js": { "maxDuration": 60 },
     "api/vocab.js": { "maxDuration": 60 },
     "api/grammar.js": {
       "maxDuration": 60
