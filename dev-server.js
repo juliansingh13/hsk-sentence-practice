@@ -17,6 +17,7 @@ const handlers = {
   '/api/check': (await import('./api/check.js')).default,
   '/api/chat': (await import('./api/chat.js')).default,
   '/api/anki-export': (await import('./api/anki-export.js')).default,
+  '/api/anki-import': (await import('./api/anki-import.js')).default,
   '/api/vocab': (await import('./api/vocab.js')).default,
   '/api/grammar': (await import('./api/grammar.js')).default,
 };

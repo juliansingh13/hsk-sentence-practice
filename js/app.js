@@ -30,6 +30,7 @@ function load() {
   return defaultState();
 }
 let state = load();
+if (state.settings.includeHsk === undefined) state.settings.includeHsk = !!localStorage.getItem(STORE_KEY);
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
   catch (e) { alert('Could not save to browser storage: ' + e.message); }
@@ -424,7 +425,9 @@ $('chat-input').addEventListener('keydown', (e) => {
 
 // ---------- settings ----------
 function renderSettings() {
-  $('current-deck').textContent = `${words().length} shared HSK words`;
+  $('current-deck').textContent = `${words().length} words in your vocabulary`;
+  $('add-hsk').disabled = !!state.settings.includeHsk;
+  $('add-hsk').textContent = state.settings.includeHsk ? 'HSK 1–6 added' : 'Add 5,000 HSK 1–6 words';
   $('per-day').value = state.settings.perDay;
   $('passphrase').value = state.settings.passphrase || '';
   $('api-key').value = state.settings.apiKey || '';
@@ -433,6 +436,99 @@ function renderSettings() {
   fillStartSelect(words(), state.progress.blockStart);
   $('settings-status').textContent = '';
 }
+$('add-hsk').onclick = async () => {
+  try {
+    const response = await fetch('data/vocab.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const existing = new Set(words().map(w => String(w.ankiId)));
+    const edits = JSON.parse(localStorage.getItem('hskw.vocabEdits') || '{}');
+    vocabulary.push(...(await response.json()).map(w => edits[w.ankiId] || w).filter(w => !deletedVocabIds().has(w.ankiId) && !existing.has(String(w.ankiId))));
+    state.settings.includeHsk = true;
+    save(); renderSettings();
+    $('deck-status').textContent = 'HSK vocabulary added.';
+  } catch (error) { $('deck-status').textContent = error.message; }
+};
+function parseDeck(text, name) {
+  if (name.toLowerCase().endsWith('.json')) {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('JSON deck must be an array of words.');
+    return data;
+  }
+  const separator = name.toLowerCase().endsWith('.tsv') ? '\t' : ',';
+  const rows = text.trim().split(/\r?\n/).map(line => line.split(separator).map(value => value.trim().replace(/^"|"$/g, '')));
+  const header = rows[0].map(value => value.toLowerCase());
+  const wordColumn = header.findIndex(value => ['hanzi', 'word', 'vocab'].includes(value));
+  const meaningColumn = header.findIndex(value => ['meaning', 'translation', 'definition'].includes(value));
+  if (wordColumn < 0 || meaningColumn < 0) throw new Error('Deck needs word/hanzi and meaning/translation columns.');
+  return rows.slice(1).map(row => Object.fromEntries(header.map((key, index) => [key, row[index] || '']))).map(row => ({ ...row, hanzi: row.hanzi || row.word || row.vocab, meaning: row.meaning || row.translation || row.definition }));
+}
+let pendingAnkiRows = null;
+const ankiFields = [['hanzi', 'Word'], ['meaning', 'Translation'], ['traditional', 'Traditional'], ['pinyin', 'Pinyin'], ['partOfSpeech', 'Part of speech'], ['example', 'Example'], ['examplePinyin', 'Example pinyin'], ['exampleTranslation', 'Example translation']];
+function showAnkiMapping(rows, names = []) {
+  pendingAnkiRows = rows;
+  const width = Math.max(...rows.map(row => row.length));
+  const options = Array.from({ length: width }, (_, i) => `<option value="${i}">${escapeHtml(names[i] || `Field ${i + 1}`)}: ${escapeHtml(rows.find(row => row[i])?.[i]?.slice(0, 60) || '')}</option>`).join('');
+  $('deck-mapping-fields').innerHTML = ankiFields.map(([key, label], index) => `<label>${label}<select data-anki-field="${key}"><option value="">Skip</option>${options}</select></label>`).join('');
+  const selects = $('deck-mapping-fields').querySelectorAll('select');
+  const suggestedWord = names.findIndex(name => /hanzi|simplified|chinese|word/i.test(name));
+  selects[0].value = String(suggestedWord >= 0 ? suggestedWord : 0);
+  selects[1].value = String(width > 1 ? (Number(selects[0].value) === 0 ? 1 : 0) : '');
+  $('deck-mapping').hidden = false;
+  $('deck-mapping').scrollIntoView({ behavior: 'smooth' });
+}
+$('confirm-deck-import').onclick = () => {
+  try {
+    const mapping = Object.fromEntries([...$('deck-mapping-fields').querySelectorAll('select')].map(select => [select.dataset.ankiField, select.value]));
+    if (mapping.hanzi === '' || mapping.meaning === '') throw new Error('Select word and translation fields.');
+    const entries = pendingAnkiRows.map(row => Object.fromEntries(ankiFields.map(([key]) => [key, mapping[key] === '' ? '' : row[Number(mapping[key])] || '']))).filter(word => word.hanzi && word.meaning);
+    if (!entries.length) throw new Error('No notes have both selected fields.');
+    addDeckEntries(entries, $('deck-origin').value.trim());
+    $('deck-mapping').hidden = true;
+    pendingAnkiRows = null;
+  } catch (error) { $('deck-mapping-status').textContent = error.message; }
+};
+function addDeckEntries(entries, origin) {
+  if (!origin) throw new Error('Enter a category name first.');
+  if (!entries.length || entries.some(w => !w || !String(w.hanzi || '').trim() || !String(w.meaning || '').trim())) throw new Error('Every word needs a word and translation.');
+  const used = new Set(words().map(w => String(w.ankiId)));
+  const base = origin.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'deck';
+  let slug = base;
+  let suffix = 2;
+  while (words().some(word => word.origin !== origin && String(word.ankiId).startsWith(`${slug}-`))) slug = `${base}-${suffix++}`;
+  const prefix = `${slug}-`;
+  let nextPosition = Math.max(0, ...[...used].filter(id => id.startsWith(prefix)).map(id => Number(id.slice(prefix.length))).filter(Number.isInteger)) + 1;
+  const added = entries.map((word, index) => {
+    let ankiId = `${prefix}${nextPosition++}`;
+    while (used.has(ankiId)) ankiId = `${prefix}${nextPosition++}`;
+    used.add(ankiId);
+    return { ...word, ankiId, hanzi: String(word.hanzi).trim(), meaning: String(word.meaning).trim(), origin, dateAdded: today() };
+  });
+  storeLocalVocab([...localVocab(), ...added]);
+  vocabulary.push(...added);
+  renderSettings();
+  $('deck-status').textContent = `Added ${added.length} words to ${origin}.`;
+}
+$('deck-file').onchange = async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const origin = $('deck-origin').value.trim();
+    if (!origin) throw new Error('Enter a category name first.');
+    let entries;
+    if (file.name.toLowerCase().endsWith('.apkg')) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const response = await fetch('/api/anki-import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: btoa(binary) }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not import Anki package.');
+      showAnkiMapping(result.rows, result.names);
+      return;
+    } else entries = parseDeck(await file.text(), file.name);
+    addDeckEntries(entries, origin);
+  } catch (error) { $('deck-status').textContent = error.message; }
+  event.target.value = '';
+};
 function fillStartSelect(list, selected) {
   const sel = $('start-select');
   sel.innerHTML = '';
@@ -568,7 +664,7 @@ $('vocab-edit-form').onsubmit = event => {
   for (const [key] of editFields) updated[key] = String(form.get(key) || '').trim();
   if (!updated.hanzi || !updated.meaning) { alert('Word and translation are required.'); return; }
   vocabulary[editingVocabIndex] = updated;
-  if (updated.origin === 'Personal' || old.origin === 'Personal') {
+  if (localVocab().some(w => w.ankiId === old.ankiId)) {
     storeLocalVocab([...localVocab().filter(w => w.ankiId !== old.ankiId), updated]);
   } else {
     const edits = JSON.parse(localStorage.getItem('hskw.vocabEdits') || '{}');
@@ -681,6 +777,7 @@ let selectedExpression = '';
 function hideSelectionAction() { $('selection-action').hidden = true; }
 function updateSelectionAction() {
   const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) { hideSelectionAction(); return; }
   const text = selection?.toString().trim() || '';
   if (!text || text.length > 40 || !/[\u3400-\u9fff]/u.test(text) ||
       selection.anchorNode?.parentElement?.closest('input, textarea, select, [contenteditable], .selection-action')) {
@@ -694,8 +791,13 @@ function updateSelectionAction() {
   popup.style.top = `${Math.min(window.innerHeight - 48, rect.bottom + 8)}px`;
   $('selection-status').textContent = '';
 }
-document.addEventListener('mouseup', () => setTimeout(updateSelectionAction, 0));
-document.addEventListener('keyup', event => { if (event.key === 'Escape') hideSelectionAction(); else updateSelectionAction(); });
+let selectionDrag = false;
+document.addEventListener('mousedown', event => { selectionDrag = event.button === 0; });
+document.addEventListener('mouseup', () => { if (selectionDrag) setTimeout(updateSelectionAction, 0); selectionDrag = false; });
+document.addEventListener('keyup', event => {
+  if (event.key === 'Escape') hideSelectionAction();
+  else if (event.shiftKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) updateSelectionAction();
+});
 document.addEventListener('pointerdown', event => { if (!event.target.closest('.selection-action')) hideSelectionAction(); });
 $('add-selection').onclick = async () => {
   const text = selectedExpression;
@@ -708,7 +810,7 @@ $('add-selection').onclick = async () => {
       ? normalizeVocab(safeJson(await callDeepSeek({ key: state.settings.apiKey, messages: vocabMessages(text), json: true, maxTokens: 700 })), text)
       : normalizeVocab(await postServer('/api/vocab', { passphrase: state.settings.passphrase, text }), text);
     if (words().some(w => w.hanzi === text)) throw new Error('This expression is already in your vocabulary list.');
-    const entry = { ...data, ankiId: `user-${Date.now()}`, noteId: '', origin: 'Personal', dateAdded: today() };
+    const entry = { ...data, ankiId: `user-${crypto.randomUUID()}`, noteId: '', origin: 'Personal', dateAdded: today() };
     storeLocalVocab([...localVocab(), entry]);
     vocabulary.push(entry);
     hideSelectionAction();
@@ -722,7 +824,7 @@ async function start() {
     const response = await fetch('data/vocab.json');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const edits = JSON.parse(localStorage.getItem('hskw.vocabEdits') || '{}');
-    vocabulary = [...(await response.json()).map(w => edits[w.ankiId] || w), ...localVocab()].filter(w => !deletedVocabIds().has(w.ankiId));
+    vocabulary = [...(state.settings.includeHsk ? (await response.json()).map(w => edits[w.ankiId] || w) : []), ...localVocab()].filter(w => !deletedVocabIds().has(w.ankiId));
     state.deck = null;
     if (state.progress.blockStart >= vocabulary.length) state.progress.blockStart = 0;
     let startView = null;
