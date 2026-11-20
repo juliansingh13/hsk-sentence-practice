@@ -1,15 +1,15 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>造句 · HSK Sentence Practice</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23b4412f'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white'>句</text></svg>">
+  <title>é€ å¥ Â· HSK Sentence Practice</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23b4412f'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white'>å¥</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="seal">句</span><span class="brand-text">造句练习</span></div>
+    <div class="brand"><span class="seal">å¥</span><span class="brand-text">é€ å¥ç»ƒä¹ </span></div>
     <nav class="topnav">
       <button id="nav-study" class="navbtn" type="button">Words</button>
       <button id="nav-grammar" class="navbtn" type="button">Grammar</button>
@@ -23,18 +23,18 @@
     <!-- STUDY VIEW -->
     <section id="view-study" hidden>
       <div class="daybar">
-        <button class="iconbtn" id="prev-day" type="button" title="Previous block">‹</button>
+        <button class="iconbtn" id="prev-day" type="button" title="Previous block">â€¹</button>
         <div class="dayinfo">
           <div class="daytitle" id="day-title"></div>
           <div class="daysub" id="day-sub"></div>
         </div>
-        <button class="iconbtn" id="next-day" type="button" title="Next block">›</button>
+        <button class="iconbtn" id="next-day" type="button" title="Next block">â€º</button>
       </div>
 
       <div class="wordbar">
         <div class="chips" id="word-chips"></div>
         <div class="wordsearch" role="search">
-          <input type="text" id="word-search" autocomplete="off" spellcheck="false" placeholder="Search words" title="Search by 汉字, pinyin or English" aria-label="Search words by 汉字, pinyin or English">
+          <input type="text" id="word-search" autocomplete="off" spellcheck="false" placeholder="Search words" title="Search by æ±‰å­—, pinyin or English" aria-label="Search words by æ±‰å­—, pinyin or English">
           <div class="search-results" id="search-results" hidden></div>
         </div>
       </div>
@@ -55,8 +55,8 @@
           </article>
 
           <div class="wordnav">
-            <button class="ghost" id="prev-word" type="button">← Previous word</button>
-            <button class="ghost" id="next-word" type="button">Next word →</button>
+            <button class="ghost" id="prev-word" type="button">â† Previous word</button>
+            <button class="ghost" id="next-word" type="button">Next word â†’</button>
           </div>
           <div class="done-row">
             <button class="secondary" id="done-btn" type="button">Done for today</button>
@@ -69,7 +69,7 @@
             <label class="label" for="input-text">Your sentences</label>
             <textarea id="input-text" rows="4" spellcheck="false"></textarea>
             <div class="composer-actions">
-              <span class="hint">Ctrl/⌘ + Enter to check</span>
+              <span class="hint">Ctrl/âŒ˜ + Enter to check</span>
               <button class="primary" id="check-btn" type="button">Check</button>
             </div>
             <div class="status" id="status" hidden></div>
@@ -81,7 +81,7 @@
             <div class="label">Ask about these corrections</div>
             <div class="chat-log" id="chat-log"></div>
             <div class="chat-input-row">
-              <textarea id="chat-input" rows="2" placeholder="e.g. Why is 了 wrong here? Can I say … instead?"></textarea>
+              <textarea id="chat-input" rows="2" placeholder="e.g. Why is äº† wrong here? Can I say â€¦ instead?"></textarea>
               <button class="primary" id="chat-send" type="button">Ask</button>
             </div>
             <div class="status" id="chat-status" hidden></div>
@@ -107,7 +107,7 @@
           <span class="g-score" id="g-score"></span>
         </div>
         <fieldset class="g-level-filter" id="g-level-filter">
-          <legend>HSK level · select one or more</legend>
+          <legend>HSK level Â· select one or more</legend>
           <div id="g-levels"></div>
         </fieldset>
       </div>
@@ -119,14 +119,14 @@
           <div class="label">Ask about this question</div>
           <div class="chat-log" id="g-chat-log"></div>
           <div class="chat-input-row">
-            <textarea id="g-chat-input" rows="2" placeholder="e.g. Why can’t I use 只要 here? Is 即使……还是 possible?"></textarea>
+            <textarea id="g-chat-input" rows="2" placeholder="e.g. Why canâ€™t I use åªè¦ here? Is å³ä½¿â€¦â€¦è¿˜æ˜¯ possible?"></textarea>
             <button class="primary" id="g-chat-send" type="button">Ask</button>
           </div>
           <div class="status" id="g-chat-status" hidden></div>
         </div>
         <div class="g-foot">
           <button class="ghost" id="g-generate" type="button">Generate new questions</button>
-          <span class="hint">Keys: 1–4 to answer · Enter for next</span>
+          <span class="hint">Keys: 1â€“4 to answer Â· Enter for next</span>
         </div>
         <div class="status" id="g-gen-status" hidden></div>
       </div>
@@ -140,8 +140,8 @@
         <div class="check-side">
           <div class="c-top">
             <div class="g-modes c-modes" id="c-modes" role="tablist" aria-label="Mode">
-              <button type="button" class="g-mode" role="tab" data-mode="free"><span class="zh">改错</span><span class="en">Check my Chinese</span></button>
-              <button type="button" class="g-mode" role="tab" data-mode="explain"><span class="zh">解释</span><span class="en">Explain a sentence</span></button>
+              <button type="button" class="g-mode" role="tab" data-mode="free"><span class="zh">æ”¹é”™</span><span class="en">Check my Chinese</span></button>
+              <button type="button" class="g-mode" role="tab" data-mode="explain"><span class="zh">è§£é‡Š</span><span class="en">Explain a sentence</span></button>
             </div>
             <div class="c-nokey" id="c-nokey" hidden>To use this page, add your DeepSeek API key or the site passphrase in <a href="#" id="c-go-settings">Settings</a>.</div>
             <div class="composer c-composer">
@@ -161,7 +161,7 @@
                 </div>
               </div>
               <div class="composer-actions">
-                <span class="hint">Ctrl/⌘ + Enter</span>
+                <span class="hint">Ctrl/âŒ˜ + Enter</span>
                 <span class="c-count" id="c-count" hidden></span>
                 <button class="primary" id="c-submit" type="button">Check</button>
               </div>
@@ -205,36 +205,37 @@
 
     <!-- SETTINGS VIEW -->
     <section id="view-settings" hidden>
-      <div class="panel"><h2>Vocabulary list</h2><p id="current-deck"></p><p>The shared HSK list is ready for everyone. Set your position here or in the Vocabulary tab.</p></div>
+      <div class="panel"><h2>Vocabulary decks</h2><p id="current-deck"></p><button class="ghost" id="add-hsk" type="button">Add 5,000 HSK 1â€“6 words</button><div class="deck-import"><p>Add your own deck from an Anki .apkg, JSON, CSV, or TSV file.</p><p class="muted small">For Anki imports, words, translations, and examples should each have their own field. If they are combined on a card front or back, separate them in Anki before importing.</p><div class="row"><label>Category name <input id="deck-origin" type="text" placeholder="My deck"></label><label class="filebtn ghostfile"><input id="deck-file" type="file" accept=".apkg,.json,.csv,.tsv,text/csv,text/tab-separated-values,application/json"><span>Choose deck file</span></label></div><p id="deck-status" class="muted" role="status"></p></div></div>
+      <div class="panel" id="deck-mapping" hidden><h2>Match Anki fields</h2><p>Select the Anki field for each vocabulary column. Word and translation are required.</p><div id="deck-mapping-fields" class="plan-grid"></div><button class="primary" id="confirm-deck-import" type="button">Import mapped deck</button><p id="deck-mapping-status" role="status"></p></div>
       <div class="panel" id="plan-panel">
-        <h2>2 · Daily plan</h2>
+        <h2>2 Â· Daily plan</h2>
         <div class="plan-grid">
           <label>New words per day
             <input type="number" id="per-day" min="1" max="100" step="1" value="7">
           </label>
           <label>Find word
-            <input type="text" id="start-search" placeholder="汉字 or pinyin">
+            <input type="text" id="start-search" placeholder="æ±‰å­— or pinyin">
           </label>
         </div>
-        <label>Today’s first word
+        <label>Todayâ€™s first word
           <select id="start-select"></select>
         </label>
-        <p class="muted">The block of words moves forward on the next calendar day only after you press “Done for today”, so a skipped day doesn’t put you out of step with Anki.</p>
+        <p class="muted">The block of words moves forward on the next calendar day only after you press â€œDone for todayâ€, so a skipped day doesnâ€™t put you out of step with Anki.</p>
       </div>
 
       <div class="panel">
-        <h2>3 · DeepSeek API key</h2>
+        <h2>3 Â· DeepSeek API key</h2>
         <ol class="steps">
           <li>Sign up at <a href="https://platform.deepseek.com" target="_blank" rel="noopener">platform.deepseek.com</a>.</li>
           <li>Top up a small amount (the minimum lasts months: one check costs a fraction of a cent).</li>
           <li>Open <em>API keys</em>, create a key, and paste it here.</li>
         </ol>
         <p id="credential-mode" class="muted small"></p>
-        <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="sk-…">
-        <p class="muted small">The key is saved only in this browser and sent only to DeepSeek (api.deepseek.com), never to this website’s server. Anyone who can use this browser could read it, so keep only a small balance on the account.</p>
+        <input type="password" id="api-key" autocomplete="off" spellcheck="false" placeholder="sk-â€¦">
+        <p class="muted small">The key is saved only in this browser and sent only to DeepSeek (api.deepseek.com), never to this websiteâ€™s server. Anyone who can use this browser could read it, so keep only a small balance on the account.</p>
         <details class="passphrase-box">
           <summary>Have a passphrase from the site owner instead?</summary>
-          <p class="muted small">With the owner’s passphrase you can use their key without a DeepSeek account. Leave the API key field empty to use it.</p>
+          <p class="muted small">With the ownerâ€™s passphrase you can use their key without a DeepSeek account. Leave the API key field empty to use it.</p>
           <input type="password" id="passphrase" autocomplete="off" placeholder="Passphrase">
         </details>
       </div>
