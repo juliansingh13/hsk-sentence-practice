@@ -220,6 +220,8 @@ export function initGrammar({ getState, save, hasCredentials, callModel, goSetti
     }
     sel.innerHTML = html;
     sel.value = scope();
+    if (!sel.value) { prefs().scope = 'all'; sel.value = 'all'; }
+    sel.classList.toggle('selected', sel.value !== 'all');
     const levels = selectedLevels();
     $('g-levels').innerHTML = [1, 2, 3, 4, 5, 6].map(n =>
       `<label class="g-level-chip"><input type="checkbox" value="${n}" ${levels.has(n) ? 'checked' : ''}><span>HSK ${n}</span></label>`
