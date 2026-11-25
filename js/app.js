@@ -6,6 +6,8 @@ import { initGrammar } from './grammar.js';
 import { chineseToPinyin, toneNumbersToMarks } from './pinyin.js';
 import { initHoverDict } from './hover-dict.js';
 import { initChecker } from './checker.js';
+import { STRUCTURES, GROUPS } from './grammar-data.js';
+import { grammarCheckMessages } from './grammar-prompts.js';
 
 let vocabulary = [];
 const STORE_KEY = 'hskw.v1';
@@ -19,6 +21,7 @@ function defaultState() {
     progress: { blockStart: 0, blockDate: today(), completed: false, wordPos: 0 },
     history: {}, // key -> [{ text, result, ts }]
     grammar: { active: {}, stats: {}, generated: [], seen: {}, log: [] },
+    wordGrammar: { enabled: false, levels: [1, 2, 3, 4, 5, 6], structureId: null },
     free: { mode: 'free', register: 'neutral', history: [] }, // Check page: newest first
   };
 }
@@ -90,6 +93,69 @@ $('nav-settings').onclick = () => show('settings');
 
 // ---------- study ----------
 let lastResult = null; // result shown for the current word in this session
+function wordGrammar() { return state.wordGrammar ||= { enabled: false, levels: [1, 2, 3, 4, 5, 6], structureId: null }; }
+function selectedWordGrammar() { return STRUCTURES.find(s => s.id === wordGrammar().structureId) || null; }
+function newWordGrammar() {
+  const pool = STRUCTURES.filter(s => wordGrammar().levels.includes(s.lvl) && s.id !== wordGrammar().structureId);
+  if (!pool.length) return;
+  wordGrammar().structureId = pool[Math.floor(Math.random() * pool.length)].id;
+  save(); renderWordGrammarControls();
+}
+function renderWordGrammarControls() {
+  const config = wordGrammar();
+  $('word-grammar-enabled').checked = config.enabled;
+  $('word-grammar-options').hidden = !config.enabled;
+  const structure = selectedWordGrammar();
+  $('word-grammar-current').innerHTML = structure ? `<strong>${escapeHtml(structure.p)}</strong> <span>HSK ${structure.lvl} · ${escapeHtml(structure.m[0] || '')}</span>` : 'Choose a grammar point to begin.';
+  for (const checkbox of document.querySelectorAll('[data-word-grammar-level]')) checkbox.checked = config.levels.includes(Number(checkbox.value));
+}
+function renderWordGrammarResult(entry) {
+  if (!entry?.grammarStructureId) return '';
+  const structure = STRUCTURES.find(s => s.id === entry.grammarStructureId);
+  if (!structure) return '';
+  const result = entry.grammarResult;
+  const used = result?.sentences?.some(sentence => sentence.target_word_used);
+  const errors = result?.sentences?.flatMap(sentence => sentence.errors || []) || [];
+  const score = entry.grammarError ? 'Check unavailable' : !used ? 'Not used' : errors.some(error => error.type === 'target_word') ? 'Needs work' : 'Used correctly';
+  return `<section class="word-grammar-feedback"><h3>Grammar practice <span class="badge ${score === 'Used correctly' ? 'ok' : 'warn'}">${score}</span></h3><p>${escapeHtml(structure.p)} · HSK ${structure.lvl}</p>${entry.grammarError ? `<p>${escapeHtml(entry.grammarError)}</p>` : renderResult(result, { target_word: 'Structure', notUsed: 'Structure not used' })}</section>`;
+}
+$('word-grammar-enabled').onchange = event => {
+  wordGrammar().enabled = event.target.checked;
+  if (event.target.checked && !selectedWordGrammar()) newWordGrammar();
+  save(); renderWordGrammarControls();
+};
+$('word-grammar-new').onclick = newWordGrammar;
+document.querySelector('.word-grammar-levels').onchange = event => {
+  if (!event.target.matches('[data-word-grammar-level]')) return;
+  const level = Number(event.target.value);
+  const levels = wordGrammar().levels;
+  wordGrammar().levels = event.target.checked ? [...new Set([...levels, level])].sort() : levels.filter(n => n !== level);
+  save();
+};
+$('word-grammar-choose').onclick = () => { renderWordGrammarPicker(); $('word-grammar-dialog').showModal(); };
+function renderWordGrammarPicker() {
+  const levels = wordGrammar().levels;
+  $('word-grammar-picker-levels').innerHTML = [1, 2, 3, 4, 5, 6].map(level => `<button type="button" class="ghost${levels.includes(level) ? ' active' : ''}" data-picker-level="${level}">HSK ${level}</button>`).join('');
+  const query = $('word-grammar-search').value.trim().toLowerCase();
+  $('word-grammar-picker-list').innerHTML = STRUCTURES.filter(s => levels.includes(s.lvl) && (!query || `${s.p} ${s.py} ${s.m.join(' ')} ${GROUPS[s.g] || ''}`.toLowerCase().includes(query))).map(s => `<button type="button" class="grammar-pick${s.id === wordGrammar().structureId ? ' active' : ''}" data-pick-structure="${escapeHtml(s.id)}"><strong>${escapeHtml(s.p)}</strong><span>HSK ${s.lvl} · ${escapeHtml(GROUPS[s.g] || '')}</span><small>${escapeHtml(s.m[0] || '')}</small></button>`).join('') || '<p>No grammar points match these filters.</p>';
+}
+$('word-grammar-search').oninput = renderWordGrammarPicker;
+$('word-grammar-picker-levels').onclick = event => {
+  const button = event.target.closest('[data-picker-level]');
+  if (!button) return;
+  const level = Number(button.dataset.pickerLevel);
+  const levels = wordGrammar().levels;
+  wordGrammar().levels = levels.includes(level) ? levels.filter(n => n !== level) : [...levels, level].sort();
+  save(); renderWordGrammarPicker(); renderWordGrammarControls();
+};
+$('word-grammar-picker-list').onclick = event => {
+  const button = event.target.closest('[data-pick-structure]');
+  if (!button) return;
+  wordGrammar().structureId = button.dataset.pickStructure;
+  wordGrammar().enabled = true;
+  save(); renderWordGrammarControls(); $('word-grammar-dialog').close();
+};
+$('word-grammar-dialog-close').onclick = () => $('word-grammar-dialog').close();
 
 function renderStudy() {
   if (!words().length) { show('vocab'); return; }
@@ -150,6 +216,8 @@ function renderStudy() {
     lastResult = { key: historyKey(wi), result: entry.result, entry, word: w };
   }
   $('result').innerHTML = lastResult && lastResult.key === historyKey(wi) ? renderResult(lastResult.result) : '';
+  $('word-grammar-result').innerHTML = lastResult?.key === historyKey(wi) ? renderWordGrammarResult(lastResult.entry) : '';
+  renderWordGrammarControls();
   renderChat();
   renderHistory(wi);
 
@@ -204,7 +272,7 @@ function renderHistory(wi) {
   $('history').hidden = !past.length;
   $('history-summary').textContent = `Previous attempts (${past.length})`;
   $('history-list').innerHTML = past.slice().reverse().map(h =>
-    `<div class="history-item"><div class="history-date">${new Date(h.ts).toLocaleString()}</div>${renderResult(h.result)}`
+    `<div class="history-item"><div class="history-date">${new Date(h.ts).toLocaleString()}</div>${renderResult(h.result)}${renderWordGrammarResult(h)}`
     + (h.chat?.length ? `<div class="chat-transcript"><div class="label">Questions</div><div class="chat-log">${h.chat.map(msgHtml).join('')}</div></div>` : '')
     + '</div>'
   ).join('');
@@ -234,6 +302,18 @@ async function runCheck(word, text) {
     return normalizeCheck(parsed);
   }
   return postServer('/api/check', { passphrase: state.settings.passphrase, word, text });
+}
+async function runWordGrammarCheck(structure, text) {
+  if (state.settings.apiKey) {
+    const content = await callDeepSeek({ key: state.settings.apiKey, messages: grammarCheckMessages(structure, { mode: 'write' }, text), json: true });
+    const parsed = safeJson(content);
+    if (!parsed) throw new Error('The grammar check returned an unreadable answer.');
+    return normalizeCheck(parsed);
+  }
+  const response = await postServer('/api/grammar', { passphrase: state.settings.passphrase, action: 'check', structure, task: { mode: 'write' }, text });
+  const parsed = safeJson(response.content);
+  if (!parsed) throw new Error('The grammar check returned an unreadable answer.');
+  return normalizeCheck(parsed);
 }
 async function runChat(word, entry) {
   if (state.settings.apiKey) {
@@ -266,14 +346,21 @@ async function check() {
   setStatus('<span class="spinner"></span>Checking…', false, true);
   try {
     const data = await runCheck(w, text);
+    const structure = wordGrammar().enabled ? selectedWordGrammar() : null;
+    let grammarResult = null, grammarError = '';
+    if (structure) {
+      try { grammarResult = await runWordGrammarCheck(structure, text); }
+      catch (error) { grammarError = error.message; }
+    }
     const key = historyKey(wi);
-    const entry = { text, result: data, ts: Date.now(), chat: [] };
+    const entry = { text, result: data, grammarResult, grammarStructureId: structure?.id || null, grammarError, ts: Date.now(), chat: [] };
     (state.history[key] ||= []).push(entry);
     if (state.history[key].length > 30) state.history[key].shift();
     save();
     lastResult = { key, result: data, entry, word: w };
     $('status').hidden = true;
     $('result').innerHTML = renderResult(data);
+    $('word-grammar-result').innerHTML = renderWordGrammarResult(entry);
     renderChat();
     renderHistory(wi);
     document.querySelectorAll('.chip')[state.progress.wordPos]?.classList.add('done');
