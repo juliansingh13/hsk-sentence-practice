@@ -22,6 +22,7 @@ function defaultState() {
     history: {}, // key -> [{ text, result, ts }]
     grammar: { active: {}, stats: {}, generated: [], seen: {}, log: [] },
     wordGrammar: { enabled: false, levels: [1, 2, 3, 4, 5, 6], structureId: null },
+    similarWords: { notes: {}, hidden: {} },
     free: { mode: 'free', register: 'neutral', history: [] }, // Check page: newest first
   };
 }
@@ -191,6 +192,9 @@ function renderStudy() {
   $('w-meaning').hidden = true;
   $('w-meaning-toggle').hidden = !w.meaning;
   $('w-meaning-toggle').textContent = 'Show meaning';
+  $('w-similar').hidden = true;
+  $('w-similar-toggle').textContent = 'Show similar words';
+  renderSimilarWords(wi);
   $('w-example-wrap').hidden = !w.example;
   $('w-example').textContent = toneNumbersToMarks(w.example);
   const examplePinyin = w.examplePinyin ? toneNumbersToMarks(w.examplePinyin) : chineseToPinyin(w.example);
@@ -246,10 +250,93 @@ $('next-day').onclick = () => moveBlock(1);
 $('prev-word').onclick = () => { state.progress.wordPos--; lastResult = null; save(); renderStudy(); };
 $('next-word').onclick = () => { state.progress.wordPos++; lastResult = null; save(); renderStudy(); };
 $('done-btn').onclick = () => { state.progress.completed = true; save(); renderStudy(); };
+function similarStore() {
+  state.similarWords ||= { notes: {}, hidden: {}, added: {} };
+  state.similarWords.notes ||= {};
+  state.similarWords.hidden ||= {};
+  state.similarWords.added ||= {};
+  return state.similarWords;
+}
+function meaningTerms(value) {
+  return [...new Set(String(value || '').toLowerCase().split(/[,;/\n]|\bor\b/)
+    .map(part => part.replace(/\([^)]*\)/g, '').replace(/[^a-z -]/g, ' ').trim())
+    .filter(part => part.length > 2 && !/^(to|a|an|the|be|of|for|one|someone|something)$/.test(part)))];
+}
+function renderSimilarWords(wi) {
+  const current = words()[wi];
+  const box = $('w-similar');
+  const own = meaningTerms(current.meaning);
+  const saved = similarStore();
+  const matches = words().map((word, index) => {
+    if (index === wi || word.hanzi === current.hanzi) return null;
+    const shared = own.filter(term => meaningTerms(word.meaning).includes(term));
+    const key = [String(current.ankiId), String(word.ankiId)].sort().join('|');
+    return shared.length || saved.added[key] ? { word, index, shared, key } : null;
+  }).filter(Boolean).sort((a, b) => Number(b.index < wi) - Number(a.index < wi) || b.shared.length - a.shared.length);
+  const visible = matches.filter(match => !saved.hidden[match.key]).slice(0, 6);
+  const dismissed = matches.filter(match => saved.hidden[match.key]);
+  box.innerHTML = '<div class="label">Similar words in your vocabulary</div>' + visible.map(({word, index, shared, key}) =>
+    `<div class="similar-word"><button type="button" class="similar-open" data-similar-index="${index}">${escapeHtml(word.hanzi)}</button><span>${escapeHtml(word.meaning)}</span><small>${index < wi ? 'Studied earlier' : 'Coming later'}${shared.length ? ` | Shared: ${escapeHtml(shared.join(', '))}` : ' | Added by you'}</small><p class="similar-explanation" data-similar-explanation="${escapeHtml(key)}">${escapeHtml(saved.notes[key] || (hasCredentials() ? 'Loading usage difference...' : 'Add a DeepSeek key or passphrase in Settings to see the usage difference.'))}</p><button type="button" class="similar-hide" data-similar-hide="${escapeHtml(key)}" aria-label="Dismiss ${escapeHtml(word.hanzi)}">Dismiss</button></div>`).join('') + (dismissed.length ? `<details class="similar-dismissed"><summary>Dismissed suggestions (${dismissed.length})</summary>${dismissed.map(({word, key}) => `<div><span>${escapeHtml(word.hanzi)} - ${escapeHtml(word.meaning)}</span><button type="button" data-similar-restore="${escapeHtml(key)}">Restore</button></div>`).join('')}</details>` : '') + '<form id="similar-add-form" class="similar-add"><label for="similar-add-word">Suggest another word from your vocabulary</label><input id="similar-add-word" list="similar-word-options" placeholder="Chinese word" required><datalist id="similar-word-options">' + words().filter(word => word.ankiId !== current.ankiId).map(word => `<option value="${escapeHtml(word.hanzi)}">${escapeHtml(word.meaning)}</option>`).join('') + '</datalist><button type="submit">Add word</button><span id="similar-add-status" role="status"></span></form>';
+  if (!box.hidden && hasCredentials()) for (const match of visible) if (!saved.notes[match.key]) loadSimilarExplanation(current, match);
+}
+const pendingSimilar = new Set();
+async function loadSimilarExplanation(current, { word, key }) {
+  if (pendingSimilar.has(key)) return;
+  pendingSimilar.add(key);
+  try {
+    const messages = [
+      { role: 'system', content: 'You are a Mandarin teacher. Explain the practical usage distinction between two Chinese words in one concise English sentence. Mention when to use each word. Use the supplied meanings and examples as context. If the distinction is uncertain, say so. Return plain text only.' },
+      { role: 'user', content: JSON.stringify({ first: { hanzi: current.hanzi, pinyin: current.pinyin, meaning: current.meaning, example: current.example }, second: { hanzi: word.hanzi, pinyin: word.pinyin, meaning: word.meaning, example: word.example } }) },
+    ];
+    const answer = state.settings.apiKey
+      ? await callDeepSeek({ key: state.settings.apiKey, messages, maxTokens: 130 })
+      : (await postServer('/api/similar', { passphrase: state.settings.passphrase, first: current, second: word })).content;
+    const explanation = String(answer || '').trim().slice(0, 500);
+    if (!explanation) throw new Error('No explanation returned.');
+    similarStore().notes[key] = explanation;
+    save();
+    const target = [...document.querySelectorAll('[data-similar-explanation]')].find(el => el.dataset.similarExplanation === key);
+    if (target) target.textContent = explanation;
+  } catch {
+    const target = [...document.querySelectorAll('[data-similar-explanation]')].find(el => el.dataset.similarExplanation === key);
+    if (target) target.textContent = 'Could not load the usage difference. Reopen this word to retry.';
+  } finally { pendingSimilar.delete(key); }
+}
+$('w-similar').addEventListener('click', event => {
+  const hide = event.target.closest('[data-similar-hide]');
+  if (hide) { similarStore().hidden[hide.dataset.similarHide] = true; save(); renderSimilarWords(blockIndices()[state.progress.wordPos]); return; }
+  const restore = event.target.closest('[data-similar-restore]');
+  if (restore) { delete similarStore().hidden[restore.dataset.similarRestore]; save(); renderSimilarWords(blockIndices()[state.progress.wordPos]); return; }
+  const open = event.target.closest('[data-similar-index]');
+  if (!open) return;
+  const index = Number(open.dataset.similarIndex);
+  if (index < 0 || index >= words().length) return;
+  state.progress.blockStart = Math.floor(index / perDay()) * perDay();
+  state.progress.wordPos = index - state.progress.blockStart;
+  save(); renderStudy();
+});
+$('w-similar').addEventListener('submit', event => {
+  if (event.target.id !== 'similar-add-form') return;
+  event.preventDefault();
+  const current = words()[blockIndices()[state.progress.wordPos]];
+  const value = $('similar-add-word').value.trim();
+  const match = words().find(word => word.hanzi === value && word.ankiId !== current.ankiId);
+  if (!match) { $('similar-add-status').textContent = 'Choose a word in your vocabulary.'; return; }
+  const key = [String(current.ankiId), String(match.ankiId)].sort().join('|');
+  similarStore().added[key] = true;
+  delete similarStore().hidden[key];
+  save(); renderSimilarWords(blockIndices()[state.progress.wordPos]);
+});
 $('w-meaning-toggle').onclick = () => {
   const m = $('w-meaning');
   m.hidden = !m.hidden;
   $('w-meaning-toggle').textContent = m.hidden ? 'Show meaning' : 'Hide meaning';
+};
+$('w-similar-toggle').onclick = () => {
+  const box = $('w-similar');
+  box.hidden = !box.hidden;
+  $('w-similar-toggle').textContent = box.hidden ? 'Show similar words' : 'Hide similar words';
+  if (!box.hidden) renderSimilarWords(blockIndices()[state.progress.wordPos]);
 };
 
 // Clicking an explanation flashes its highlight, and vice versa.
