@@ -8,6 +8,7 @@ import { initHoverDict } from './hover-dict.js';
 import { initChecker } from './checker.js';
 import { STRUCTURES, GROUPS } from './grammar-data.js';
 import { grammarCheckMessages } from './grammar-prompts.js';
+import { storyMessages } from './story-prompt.js';
 
 let vocabulary = [];
 const STORE_KEY = 'hskw.v1';
@@ -237,16 +238,25 @@ function renderStudy() {
 
 let storyOpen = false;
 let storyLoading = false;
+let draftStoryAdvanced = null;
 function storyKey() { return blockIndices().map(i => String(words()[i]?.ankiId)).join('|'); }
 function storyExtras() { return (state.storyExtras ||= {})[storyKey()] ||= []; }
-function storyPrefs() { return (state.storyPrefs ||= {})[storyKey()] ||= { length: 'medium', level: 4, translation: false, highlight: false }; }
-function storyHighlightedHtml(sentence, terms) {
+function storyPrefs() { return (state.storyPrefs ||= {})[storyKey()] ||= { length: 'medium', level: 4, translation: false, highlight: false, grammar: [], characterMode: false }; }
+function renderStoryGrammar() {
+  const query = $('story-grammar-search').value.trim().toLowerCase();
+  const selected = new Set((draftStoryAdvanced || storyPrefs()).grammar || []);
+  const list = STRUCTURES.filter(s => selected.has(s.id) || !query || `${s.p} ${s.py} ${s.m.join(' ')}`.toLowerCase().includes(query)).slice(0, 100);
+  $('story-grammar-options').innerHTML = list.map(s => `<label class="story-grammar-choice"><input type="checkbox" value="${escapeHtml(s.id)}" ${selected.has(s.id) ? 'checked' : ''}><span>${escapeHtml(s.p)}</span><small>HSK ${s.lvl} · ${escapeHtml(s.m[0] || '')}</small></label>`).join('');
+}
+function storyHighlightedHtml(sentence, terms, relatedTerms = []) {
   const text = String(sentence || '');
-  if (!terms.length) return escapeHtml(text);
+  if (!terms.length && !relatedTerms.length) return escapeHtml(text);
   let html = '';
   for (let i = 0; i < text.length;) {
     const match = terms.find(term => text.startsWith(term, i));
+    const related = !match && relatedTerms.find(term => text.startsWith(term, i));
     if (match) { html += `<mark class="story-word-mark">${escapeHtml(match)}</mark>`; i += match.length; }
+    else if (related) { html += `<mark class="story-related-mark">${escapeHtml(related)}</mark>`; i += related.length; }
     else { html += escapeHtml(text[i]); i++; }
   }
   return html;
@@ -263,6 +273,9 @@ function renderDailyStory() {
   $('daily-story-level').value = String(prefs.level);
   $('daily-story-translation').checked = prefs.translation;
   $('daily-story-highlight').checked = !!prefs.highlight;
+  $('story-character-mode').checked = !!(draftStoryAdvanced || prefs).characterMode;
+  $('story-apply').disabled = storyLoading;
+  renderStoryGrammar();
   $('daily-story-word').disabled = storyLoading;
   $('daily-story-add').querySelector('button').disabled = storyLoading;
   const dailyIds = new Set(blockIndices().map(i => String(words()[i]?.ankiId)));
@@ -275,8 +288,11 @@ function renderDailyStory() {
   $('daily-story-status').textContent = storyLoading ? 'Writing a story with today\'s words…' : storyOpen && !story ? 'Generate a story to begin.' : '';
   const lines = typeof story === 'string' ? story.split(/(?<=[。！？])\s*/).filter(Boolean).map(zh => ({ zh, en: '' })) : story?.sentences || [];
   const selectedIds = new Set([...blockIndices().map(i => String(words()[i]?.ankiId)), ...storyExtras()]);
-  const terms = prefs.highlight ? [...new Set(words().filter(w => selectedIds.has(String(w.ankiId))).map(w => w.hanzi).filter(Boolean))].sort((a, b) => b.length - a.length) : [];
-  $('daily-story-text').innerHTML = lines.map(line => `<p class="story-sentence"><span>${storyHighlightedHtml(line.zh, terms)}</span>${prefs.translation && line.en ? `<span class="story-english">${escapeHtml(line.en)}</span>` : ''}</p>`).join('');
+  const chosen = words().filter(w => selectedIds.has(String(w.ankiId))).map(w => w.hanzi).filter(Boolean);
+  const terms = prefs.highlight ? [...new Set(chosen)].sort((a, b) => b.length - a.length) : [];
+  const characters = new Set(chosen.flatMap(word => [...word].filter(char => /[\u3400-\u9fff]/u.test(char))));
+  const relatedTerms = prefs.highlight && prefs.characterMode ? [...new Set(words().map(w => w.hanzi).filter(word => word && !terms.includes(word) && [...word].some(char => characters.has(char))))].sort((a, b) => b.length - a.length) : [];
+  $('daily-story-text').innerHTML = lines.map(line => `<p class="story-sentence"><span>${storyHighlightedHtml(line.zh, terms, relatedTerms)}</span>${prefs.translation && line.en ? `<span class="story-english">${escapeHtml(line.en)}</span>` : ''}</p>`).join('');
 }
 async function generateDailyStory() {
   if (storyLoading) return;
@@ -289,13 +305,12 @@ async function generateDailyStory() {
   const dailyWords = selected.map(w => ({ hanzi: w.hanzi, pinyin: w.pinyin, meaning: w.meaning }));
   storyLoading = true; renderDailyStory();
   try {
-    const messages = [
-      { role: 'system', content: 'Write a coherent Mandarin story for a learner. Use every supplied Chinese word correctly; repeat words naturally when possible. Follow the requested HSK language level and length, while retaining the supplied words even if above that level. If a previous story is supplied, create a genuinely different plot, setting, and characters. Return only JSON: {"sentences":[{"zh":"Chinese sentence","en":"English translation"}]}. Keep each Chinese sentence and its English translation paired.' },
-      { role: 'user', content: JSON.stringify({ words: dailyWords, length: prefs.length, hskLevel: prefs.level, previousStory: previous?.sentences?.map(s => s.zh).join('') || previous || '' }) },
-    ];
+    const previousStory = previous?.sentences?.map(s => s.zh).join('') || previous || '';
+    const grammar = STRUCTURES.filter(s => (prefs.grammar || []).includes(s.id)).map(s => ({ pattern: s.p, meaning: s.m[0] || '' }));
+    const messages = storyMessages({ words: dailyWords, length: prefs.length, hskLevel: prefs.level, previousStory, grammar, characterMode: !!prefs.characterMode });
     const text = state.settings.apiKey
       ? await callDeepSeek({ key: state.settings.apiKey, messages, json: true, temperature: 0.9, maxTokens: 2400 })
-      : (await postServer('/api/story', { passphrase: state.settings.passphrase, words: dailyWords, length: prefs.length, level: prefs.level, previousStory: previous?.sentences?.map(s => s.zh).join('') || previous || '' })).content;
+      : (await postServer('/api/story', { passphrase: state.settings.passphrase, words: dailyWords, length: prefs.length, level: prefs.level, previousStory, grammar, characterMode: !!prefs.characterMode })).content;
     const parsed = safeJson(text);
     if (!Array.isArray(parsed?.sentences) || !parsed.sentences.length) throw new Error('The story could not be read.');
     state.dailyStories[key] = { sentences: parsed.sentences.filter(s => s && typeof s.zh === 'string').map(s => ({ zh: s.zh, en: String(s.en || '') })) }; save();
@@ -308,6 +323,31 @@ $('daily-story-length').onchange = event => { storyPrefs().length = event.target
 $('daily-story-level').onchange = event => { storyPrefs().level = Number(event.target.value); save(); generateDailyStory(); };
 $('daily-story-translation').onchange = event => { storyPrefs().translation = event.target.checked; save(); renderDailyStory(); };
 $('daily-story-highlight').onchange = event => { storyPrefs().highlight = event.target.checked; save(); renderDailyStory(); };
+$('story-grammar-search').oninput = renderStoryGrammar;
+$('story-grammar-options').onchange = event => {
+  const input = event.target.closest('input[type="checkbox"]');
+  if (!input) return;
+  draftStoryAdvanced ||= { grammar: [...(storyPrefs().grammar || [])], characterMode: !!storyPrefs().characterMode };
+  const selected = new Set(draftStoryAdvanced.grammar);
+  if (input.checked) selected.add(input.value); else selected.delete(input.value);
+  draftStoryAdvanced.grammar = [...selected]; renderStoryGrammar();
+};
+$('story-character-mode').onchange = event => {
+  draftStoryAdvanced ||= { grammar: [...(storyPrefs().grammar || [])], characterMode: !!storyPrefs().characterMode };
+  draftStoryAdvanced.characterMode = event.target.checked;
+};
+$('story-advanced').ontoggle = event => {
+  if (event.target.open) draftStoryAdvanced = { grammar: [...(storyPrefs().grammar || [])], characterMode: !!storyPrefs().characterMode };
+  else draftStoryAdvanced = null;
+  renderStoryGrammar();
+};
+$('story-apply').onclick = () => {
+  if (storyLoading) return;
+  const draft = draftStoryAdvanced || { grammar: [...(storyPrefs().grammar || [])], characterMode: !!storyPrefs().characterMode };
+  storyPrefs().grammar = draft.grammar;
+  storyPrefs().characterMode = draft.characterMode;
+  save(); generateDailyStory();
+};
 $('daily-story-close').onclick = () => { storyOpen = false; renderDailyStory(); };
 function renderStorySuggestions() {
   const query = $('daily-story-word').value.trim().toLowerCase();

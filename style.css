@@ -766,3 +766,22 @@ mark.err-meaning sup { color: var(--mean); }
 
 .story-highlight-toggle input { accent-color: var(--accent); }
 .story-word-mark { color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 0 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+.story-advanced { margin-top: 12px; border-top: 1px solid var(--line); }
+.story-advanced > summary { display: list-item; width: fit-content; padding: 10px 2px; cursor: pointer; color: var(--ink-3); font-size: 13px; }
+.story-advanced > summary:hover { color: var(--accent); }
+.story-advanced-body { padding: 2px 0 14px; }
+.story-advanced-body > label:first-child { display: block; margin: 8px 0; font-size: 13px; color: var(--ink-2); }
+#story-grammar-search { box-sizing: border-box; width: 100%; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink); padding: 9px 11px; }
+.story-grammar-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 5px; max-height: 220px; overflow: auto; margin: 9px 0 15px; }
+.story-grammar-choice { display: flex; align-items: center; gap: 7px; padding: 6px; border-radius: 7px; cursor: pointer; }
+.story-grammar-choice:has(input:checked) { background: var(--accent-soft); }
+.story-grammar-choice input, .story-character-toggle input { accent-color: var(--accent); }
+.story-grammar-choice span { color: var(--ink); font-family: var(--font-cjk); }
+.story-grammar-choice small { color: var(--ink-3); }
+.story-character-toggle { display: flex; align-items: center; gap: 7px; font-size: 14px; }
+.story-advanced-body p { margin: 8px 0 0; line-height: 1.5; }
+
+.story-apply { margin-top: 14px; }
+
+.story-related-mark { color: var(--gr); background: var(--gr-bg); border-radius: 4px; padding: 0 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }

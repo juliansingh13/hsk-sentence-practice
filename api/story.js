@@ -1,4 +1,5 @@
 import { callDeepSeek, safeJson, str, DEFAULT_MODEL } from '../js/prompts.js';
+import { storyMessages } from '../js/story-prompt.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -8,15 +9,14 @@ export default async function handler(req, res) {
   const length = ['short', 'medium', 'long'].includes(body.length) ? body.length : 'medium';
   const level = Math.min(6, Math.max(1, Number(body.level) || 4));
   const previousStory = str(body.previousStory, 3000);
+  const grammar = (Array.isArray(body.grammar) ? body.grammar : []).slice(0, 12).map(g => ({ pattern: str(g?.pattern, 100), meaning: str(g?.meaning, 160) })).filter(g => g.pattern);
+  const characterMode = body.characterMode === true;
   if (!words.length) return res.status(400).json({ error: 'No daily words supplied.' });
   if (!process.env.DEEPSEEK_API_KEY) return res.status(500).json({ error: 'Server is missing DEEPSEEK_API_KEY.' });
   try {
     const content = await callDeepSeek({
       key: process.env.DEEPSEEK_API_KEY, model: process.env.DEEPSEEK_MODEL || DEFAULT_MODEL,
-      messages: [
-        { role: 'system', content: 'Write a coherent Mandarin story for a learner. Use every supplied Chinese word correctly; repeat words naturally when possible. Follow the requested HSK language level and length, while retaining the supplied words even if above that level. If a previous story is supplied, create a genuinely different plot, setting, and characters. Return only JSON: {"sentences":[{"zh":"Chinese sentence","en":"English translation"}]}. Keep each Chinese sentence and its English translation paired.' },
-        { role: 'user', content: JSON.stringify({ words, length, hskLevel: level, previousStory }) },
-      ], json: true, temperature: 0.9, maxTokens: 2400, timeoutMs: 55000,
+      messages: storyMessages({ words, length, hskLevel: level, previousStory, grammar, characterMode }), json: true, temperature: 0.9, maxTokens: 2400, timeoutMs: 55000,
     });
     return res.status(200).json({ content: str(content, 6000).trim() });
   } catch (error) { return res.status(502).json({ error: error.message }); }
