@@ -33,13 +33,23 @@
 
       <div class="wordbar">
         <div class="chips" id="word-chips"></div>
+        <button class="ghost" id="daily-story-open" type="button">Read today's story</button>
         <div class="wordsearch" role="search">
           <input type="text" id="word-search" autocomplete="off" spellcheck="false" placeholder="Search words" title="Search by 汉字, pinyin or English" aria-label="Search words by 汉字, pinyin or English">
           <div class="search-results" id="search-results" hidden></div>
         </div>
       </div>
 
-      <div class="study-layout">
+      <section id="daily-story" class="daily-story" hidden>
+        <div class="daily-story-actions"><h2>Today's story</h2><div><button class="ghost" id="daily-story-new" type="button">Generate another</button><button class="ghost" id="daily-story-close" type="button">Back to words</button></div></div>
+        <div class="daily-story-controls"><label>Length <select id="daily-story-length"><option value="short">Shorter</option><option value="medium" selected>Medium</option><option value="long">Longer</option></select></label><label>Language level <select id="daily-story-level"><option value="1">HSK 1</option><option value="2">HSK 2</option><option value="3">HSK 3</option><option value="4" selected>HSK 4</option><option value="5">HSK 5</option><option value="6">HSK 6</option></select></label><label class="story-translation-toggle"><input id="daily-story-translation" type="checkbox"> Show English under sentences</label></div>
+        <form id="daily-story-add" class="daily-story-add"><label for="daily-story-word">Add a word from your vocabulary</label><div class="daily-story-add-row"><div class="daily-story-search"><input id="daily-story-word" type="search" autocomplete="off" placeholder="Search Chinese word" required><div id="daily-story-word-options" class="daily-story-suggestions" hidden></div></div><button class="ghost" type="submit">Add and regenerate</button></div></form>
+        <div id="daily-story-extra" class="daily-story-extra"></div>
+        <p id="daily-story-status" role="status"></p>
+        <div id="daily-story-text" class="daily-story-text"></div>
+      </section>
+
+      <div class="study-layout" id="study-layout">
         <div class="study-side">
           <article class="card" id="word-card">
             <div class="word-hanzi" id="w-hanzi"></div>

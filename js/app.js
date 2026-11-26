@@ -22,6 +22,7 @@ function defaultState() {
     history: {}, // key -> [{ text, result, ts }]
     grammar: { active: {}, stats: {}, generated: [], seen: {}, log: [] },
     wordGrammar: { enabled: false, levels: [1, 2, 3, 4, 5, 6], structureId: null },
+    dailyStories: {},
     similarWords: { notes: {}, hidden: {} },
     free: { mode: 'free', register: 'neutral', history: [] }, // Check page: newest first
   };
@@ -170,6 +171,7 @@ function renderStudy() {
   const dayNum = Math.floor(p.blockStart / perDay()) + 1;
   $('day-title').textContent = `Day ${dayNum}`;
   $('day-sub').textContent = `Words ${first}–${last} of ${words().length}`;
+  renderDailyStory();
   $('prev-day').disabled = p.blockStart === 0;
   $('next-day').disabled = p.blockStart + perDay() >= words().length;
 
@@ -233,6 +235,99 @@ function renderStudy() {
   }
 }
 
+let storyOpen = false;
+let storyLoading = false;
+function storyKey() { return blockIndices().map(i => String(words()[i]?.ankiId)).join('|'); }
+function storyExtras() { return (state.storyExtras ||= {})[storyKey()] ||= []; }
+function storyPrefs() { return (state.storyPrefs ||= {})[storyKey()] ||= { length: 'medium', level: 4, translation: false }; }
+function renderDailyStory() {
+  const story = (state.dailyStories ||= {})[storyKey()];
+  const prefs = storyPrefs();
+  $('daily-story').hidden = !storyOpen;
+  $('study-layout').hidden = storyOpen;
+  $('daily-story-open').textContent = storyOpen ? 'Viewing story' : "Read today's story";
+  $('daily-story-open').disabled = storyLoading;
+  $('daily-story-new').disabled = storyLoading;
+  $('daily-story-length').value = prefs.length;
+  $('daily-story-level').value = String(prefs.level);
+  $('daily-story-translation').checked = prefs.translation;
+  $('daily-story-word').disabled = storyLoading;
+  $('daily-story-add').querySelector('button').disabled = storyLoading;
+  const dailyIds = new Set(blockIndices().map(i => String(words()[i]?.ankiId)));
+  const extraIds = new Set(storyExtras());
+  if (!storyLoading) renderStorySuggestions();
+  $('daily-story-extra').innerHTML = storyExtras().map(id => {
+    const word = words().find(w => String(w.ankiId) === id);
+    return word ? `<span class="story-extra-chip">${escapeHtml(word.hanzi)} <button type="button" data-story-remove="${escapeHtml(id)}" aria-label="Remove ${escapeHtml(word.hanzi)} and regenerate">×</button></span>` : '';
+  }).join('');
+  $('daily-story-status').textContent = storyLoading ? 'Writing a story with today\'s words…' : storyOpen && !story ? 'Generate a story to begin.' : '';
+  const lines = typeof story === 'string' ? story.split(/(?<=[。！？])\s*/).filter(Boolean).map(zh => ({ zh, en: '' })) : story?.sentences || [];
+  $('daily-story-text').innerHTML = lines.map(line => `<p class="story-sentence"><span>${escapeHtml(line.zh || '')}</span>${prefs.translation && line.en ? `<span class="story-english">${escapeHtml(line.en)}</span>` : ''}</p>`).join('');
+}
+async function generateDailyStory() {
+  if (storyLoading) return;
+  if (!hasCredentials()) { show('settings'); $('settings-status').textContent = 'Add a DeepSeek key or passphrase to generate a story.'; return; }
+  const key = storyKey();
+  const previous = state.dailyStories?.[key];
+  const prefs = { ...storyPrefs() };
+  const dailyIds = new Set(blockIndices().map(i => String(words()[i]?.ankiId)));
+  const selected = [...blockIndices().map(i => words()[i]), ...words().filter(w => storyExtras().includes(String(w.ankiId)) && !dailyIds.has(String(w.ankiId)))];
+  const dailyWords = selected.map(w => ({ hanzi: w.hanzi, pinyin: w.pinyin, meaning: w.meaning }));
+  storyLoading = true; renderDailyStory();
+  try {
+    const messages = [
+      { role: 'system', content: 'Write a coherent Mandarin story for a learner. Use every supplied Chinese word correctly; repeat words naturally when possible. Follow the requested HSK language level and length, while retaining the supplied words even if above that level. If a previous story is supplied, create a genuinely different plot, setting, and characters. Return only JSON: {"sentences":[{"zh":"Chinese sentence","en":"English translation"}]}. Keep each Chinese sentence and its English translation paired.' },
+      { role: 'user', content: JSON.stringify({ words: dailyWords, length: prefs.length, hskLevel: prefs.level, previousStory: previous?.sentences?.map(s => s.zh).join('') || previous || '' }) },
+    ];
+    const text = state.settings.apiKey
+      ? await callDeepSeek({ key: state.settings.apiKey, messages, json: true, temperature: 0.9, maxTokens: 2400 })
+      : (await postServer('/api/story', { passphrase: state.settings.passphrase, words: dailyWords, length: prefs.length, level: prefs.level, previousStory: previous?.sentences?.map(s => s.zh).join('') || previous || '' })).content;
+    const parsed = safeJson(text);
+    if (!Array.isArray(parsed?.sentences) || !parsed.sentences.length) throw new Error('The story could not be read.');
+    state.dailyStories[key] = { sentences: parsed.sentences.filter(s => s && typeof s.zh === 'string').map(s => ({ zh: s.zh, en: String(s.en || '') })) }; save();
+  } catch (error) { $('daily-story-status').textContent = `Could not generate story: ${error.message}`; }
+  finally { storyLoading = false; renderDailyStory(); }
+}
+$('daily-story-open').onclick = () => { storyOpen = true; renderDailyStory(); if (!state.dailyStories?.[storyKey()]) generateDailyStory(); };
+$('daily-story-new').onclick = generateDailyStory;
+$('daily-story-length').onchange = event => { storyPrefs().length = event.target.value; save(); generateDailyStory(); };
+$('daily-story-level').onchange = event => { storyPrefs().level = Number(event.target.value); save(); generateDailyStory(); };
+$('daily-story-translation').onchange = event => { storyPrefs().translation = event.target.checked; save(); renderDailyStory(); };
+$('daily-story-close').onclick = () => { storyOpen = false; renderDailyStory(); };
+function renderStorySuggestions() {
+  const query = $('daily-story-word').value.trim().toLowerCase();
+  const box = $('daily-story-word-options');
+  const dailyIds = new Set(blockIndices().map(i => String(words()[i]?.ankiId)));
+  const extraIds = new Set(storyExtras());
+  const matches = query ? words().filter(w => !dailyIds.has(String(w.ankiId)) && !extraIds.has(String(w.ankiId)) && `${w.hanzi} ${w.pinyin} ${w.meaning}`.toLowerCase().includes(query)).slice(0, 8) : [];
+  box.innerHTML = matches.map(w => `<button type="button" class="story-suggestion" data-story-word="${escapeHtml(String(w.ankiId))}"><strong>${escapeHtml(w.hanzi)}</strong><span>${escapeHtml(w.meaning)}</span></button>`).join('');
+  box.hidden = !matches.length || !storyOpen;
+}
+$('daily-story-word').oninput = renderStorySuggestions;
+$('daily-story-word-options').onclick = event => {
+  const button = event.target.closest('[data-story-word]');
+  if (!button) return;
+  const word = words().find(w => String(w.ankiId) === button.dataset.storyWord);
+  if (word) { $('daily-story-word').value = word.hanzi; $('daily-story-word-options').hidden = true; }
+};
+document.addEventListener('click', event => { if (!event.target.closest('.daily-story-search')) $('daily-story-word-options').hidden = true; });
+$('daily-story-add').onsubmit = event => {
+  event.preventDefault();
+  const value = $('daily-story-word').value.trim();
+  const dailyIds = new Set(blockIndices().map(i => String(words()[i]?.ankiId)));
+  const word = words().find(w => w.hanzi === value && !dailyIds.has(String(w.ankiId)) && !storyExtras().includes(String(w.ankiId)));
+  if (!word) { $('daily-story-status').textContent = 'Choose an unused word from your vocabulary.'; return; }
+  storyExtras().push(String(word.ankiId)); save();
+  $('daily-story-word').value = '';
+  renderDailyStory(); generateDailyStory();
+};
+$('daily-story-extra').onclick = event => {
+  const button = event.target.closest('[data-story-remove]');
+  if (!button || storyLoading) return;
+  state.storyExtras[storyKey()] = storyExtras().filter(id => id !== button.dataset.storyRemove);
+  save(); renderDailyStory(); generateDailyStory();
+};
+
 function moveBlock(dir) {
   const p = state.progress;
   const next = p.blockStart + dir * perDay();
@@ -276,7 +371,7 @@ function renderSimilarWords(wi) {
   const visible = matches.filter(match => !saved.hidden[match.key]).slice(0, 6);
   const dismissed = matches.filter(match => saved.hidden[match.key]);
   box.innerHTML = '<div class="label">Similar words in your vocabulary</div>' + visible.map(({word, index, shared, key}) =>
-    `<div class="similar-word"><button type="button" class="similar-open" data-similar-index="${index}">${escapeHtml(word.hanzi)}</button><span>${escapeHtml(word.meaning)}</span><small>${index < wi ? 'Studied earlier' : 'Coming later'}${shared.length ? ` | Shared: ${escapeHtml(shared.join(', '))}` : ' | Added by you'}</small><p class="similar-explanation" data-similar-explanation="${escapeHtml(key)}">${escapeHtml(saved.notes[key] || (hasCredentials() ? 'Loading usage difference...' : 'Add a DeepSeek key or passphrase in Settings to see the usage difference.'))}</p><button type="button" class="similar-hide" data-similar-hide="${escapeHtml(key)}" aria-label="Dismiss ${escapeHtml(word.hanzi)}">Dismiss</button></div>`).join('') + (dismissed.length ? `<details class="similar-dismissed"><summary>Dismissed suggestions (${dismissed.length})</summary>${dismissed.map(({word, key}) => `<div><span>${escapeHtml(word.hanzi)} - ${escapeHtml(word.meaning)}</span><button type="button" data-similar-restore="${escapeHtml(key)}">Restore</button></div>`).join('')}</details>` : '') + '<form id="similar-add-form" class="similar-add"><label for="similar-add-word">Suggest another word from your vocabulary</label><input id="similar-add-word" list="similar-word-options" placeholder="Chinese word" required><datalist id="similar-word-options">' + words().filter(word => word.ankiId !== current.ankiId).map(word => `<option value="${escapeHtml(word.hanzi)}">${escapeHtml(word.meaning)}</option>`).join('') + '</datalist><button type="submit">Add word</button><span id="similar-add-status" role="status"></span></form>';
+    `<div class="similar-word"><button type="button" class="similar-open" data-similar-index="${index}">${escapeHtml(word.hanzi)}</button><span>${escapeHtml(word.meaning)}</span><small>${index < wi ? 'Studied earlier' : 'Coming later'}${shared.length ? ` | Shared: ${escapeHtml(shared.join(', '))}` : ' | Added by you'}</small><p class="similar-explanation" data-similar-explanation="${escapeHtml(key)}">${escapeHtml(saved.notes[key] || (hasCredentials() ? 'Loading usage difference...' : 'Add a DeepSeek key or passphrase in Settings to see the usage difference.'))}</p><button type="button" class="similar-hide" data-similar-hide="${escapeHtml(key)}" aria-label="Dismiss ${escapeHtml(word.hanzi)}">Dismiss</button></div>`).join('') + (dismissed.length ? `<details class="similar-dismissed"><summary>Dismissed suggestions (${dismissed.length})</summary>${dismissed.map(({word, key}) => `<div><span>${escapeHtml(word.hanzi)} - ${escapeHtml(word.meaning)}</span><button type="button" data-similar-restore="${escapeHtml(key)}">Restore</button></div>`).join('')}</details>` : '') + '<form id="similar-add-form" class="similar-add"><label for="similar-add-word">Suggest another word from your vocabulary</label><div class="similar-add-row"><div class="similar-search"><input id="similar-add-word" type="search" autocomplete="off" placeholder="Search Chinese word" required><div id="similar-word-options" class="daily-story-suggestions" hidden></div></div><button type="submit">Add word</button></div><span id="similar-add-status" role="status"></span></form>' ;
   if (!box.hidden && hasCredentials()) for (const match of visible) if (!saved.notes[match.key]) loadSimilarExplanation(current, match);
 }
 const pendingSimilar = new Set();
@@ -315,6 +410,24 @@ $('w-similar').addEventListener('click', event => {
   state.progress.wordPos = index - state.progress.blockStart;
   save(); renderStudy();
 });
+function renderSimilarSuggestions() {
+  const input = $('similar-add-word');
+  if (!input) return;
+  const query = input.value.trim().toLowerCase();
+  const box = $('similar-word-options');
+  const current = words()[blockIndices()[state.progress.wordPos]];
+  const matches = query ? words().filter(w => w.ankiId !== current.ankiId && `${w.hanzi} ${w.pinyin} ${w.meaning}`.toLowerCase().includes(query)).slice(0, 8) : [];
+  box.innerHTML = matches.map(w => `<button type="button" class="story-suggestion" data-similar-word="${escapeHtml(String(w.ankiId))}"><strong>${escapeHtml(w.hanzi)}</strong><span>${escapeHtml(w.meaning)}</span></button>`).join('');
+  box.hidden = !matches.length;
+}
+$('w-similar').addEventListener('input', event => { if (event.target.id === 'similar-add-word') renderSimilarSuggestions(); });
+$('w-similar').addEventListener('click', event => {
+  const button = event.target.closest('[data-similar-word]');
+  if (!button) return;
+  const word = words().find(w => String(w.ankiId) === button.dataset.similarWord);
+  if (word) { $('similar-add-word').value = word.hanzi; $('similar-word-options').hidden = true; }
+});
+document.addEventListener('click', event => { if (!event.target.closest('.similar-search') && $('similar-word-options')) $('similar-word-options').hidden = true; });
 $('w-similar').addEventListener('submit', event => {
   if (event.target.id !== 'similar-add-form') return;
   event.preventDefault();
