@@ -763,3 +763,6 @@ mark.err-meaning sup { color: var(--mean); }
 .story-translation-toggle input { accent-color: var(--accent); }
 .story-sentence { margin: 0 0 12px; }
 .story-english { display: block; font-family: var(--font-ui); font-size: 14px; line-height: 1.5; color: var(--ink-3); }
+
+.story-highlight-toggle input { accent-color: var(--accent); }
+.story-word-mark { color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 0 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }

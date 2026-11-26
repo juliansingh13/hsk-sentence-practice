@@ -239,7 +239,18 @@ let storyOpen = false;
 let storyLoading = false;
 function storyKey() { return blockIndices().map(i => String(words()[i]?.ankiId)).join('|'); }
 function storyExtras() { return (state.storyExtras ||= {})[storyKey()] ||= []; }
-function storyPrefs() { return (state.storyPrefs ||= {})[storyKey()] ||= { length: 'medium', level: 4, translation: false }; }
+function storyPrefs() { return (state.storyPrefs ||= {})[storyKey()] ||= { length: 'medium', level: 4, translation: false, highlight: false }; }
+function storyHighlightedHtml(sentence, terms) {
+  const text = String(sentence || '');
+  if (!terms.length) return escapeHtml(text);
+  let html = '';
+  for (let i = 0; i < text.length;) {
+    const match = terms.find(term => text.startsWith(term, i));
+    if (match) { html += `<mark class="story-word-mark">${escapeHtml(match)}</mark>`; i += match.length; }
+    else { html += escapeHtml(text[i]); i++; }
+  }
+  return html;
+}
 function renderDailyStory() {
   const story = (state.dailyStories ||= {})[storyKey()];
   const prefs = storyPrefs();
@@ -251,6 +262,7 @@ function renderDailyStory() {
   $('daily-story-length').value = prefs.length;
   $('daily-story-level').value = String(prefs.level);
   $('daily-story-translation').checked = prefs.translation;
+  $('daily-story-highlight').checked = !!prefs.highlight;
   $('daily-story-word').disabled = storyLoading;
   $('daily-story-add').querySelector('button').disabled = storyLoading;
   const dailyIds = new Set(blockIndices().map(i => String(words()[i]?.ankiId)));
@@ -262,7 +274,9 @@ function renderDailyStory() {
   }).join('');
   $('daily-story-status').textContent = storyLoading ? 'Writing a story with today\'s words…' : storyOpen && !story ? 'Generate a story to begin.' : '';
   const lines = typeof story === 'string' ? story.split(/(?<=[。！？])\s*/).filter(Boolean).map(zh => ({ zh, en: '' })) : story?.sentences || [];
-  $('daily-story-text').innerHTML = lines.map(line => `<p class="story-sentence"><span>${escapeHtml(line.zh || '')}</span>${prefs.translation && line.en ? `<span class="story-english">${escapeHtml(line.en)}</span>` : ''}</p>`).join('');
+  const selectedIds = new Set([...blockIndices().map(i => String(words()[i]?.ankiId)), ...storyExtras()]);
+  const terms = prefs.highlight ? [...new Set(words().filter(w => selectedIds.has(String(w.ankiId))).map(w => w.hanzi).filter(Boolean))].sort((a, b) => b.length - a.length) : [];
+  $('daily-story-text').innerHTML = lines.map(line => `<p class="story-sentence"><span>${storyHighlightedHtml(line.zh, terms)}</span>${prefs.translation && line.en ? `<span class="story-english">${escapeHtml(line.en)}</span>` : ''}</p>`).join('');
 }
 async function generateDailyStory() {
   if (storyLoading) return;
@@ -293,6 +307,7 @@ $('daily-story-new').onclick = generateDailyStory;
 $('daily-story-length').onchange = event => { storyPrefs().length = event.target.value; save(); generateDailyStory(); };
 $('daily-story-level').onchange = event => { storyPrefs().level = Number(event.target.value); save(); generateDailyStory(); };
 $('daily-story-translation').onchange = event => { storyPrefs().translation = event.target.checked; save(); renderDailyStory(); };
+$('daily-story-highlight').onchange = event => { storyPrefs().highlight = event.target.checked; save(); renderDailyStory(); };
 $('daily-story-close').onclick = () => { storyOpen = false; renderDailyStory(); };
 function renderStorySuggestions() {
   const query = $('daily-story-word').value.trim().toLowerCase();
